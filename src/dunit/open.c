@@ -1,0 +1,49 @@
+#include <fcntl.h>
+#include <string.h>
+#include "syscall.h"
+
+/* Dunit port: open adapter.
+ *
+ * The kernel's Open syscall is Open(path_ptr, path_len, dunit_flags) — the path
+ * is a pointer+length (not NUL-terminated) and the flags use Dunit's own bit
+ * layout, NOT the POSIX/Linux values musl's headers define. So open cannot be a
+ * plain syscall-number remap; the __sys_open* macros (src/internal/syscall.h)
+ * funnel every opener (open/openat/fopen/posix_spawn/…) through here instead.
+ *
+ * Dunit OpenFlags bits — kernel/src/fs/vfs.rs (TODO: promote into the generated
+ * abi/include/dunit headers so this stops being a hand-kept copy).
+ */
+#define DUNIT_O_READ   (1 << 0)
+#define DUNIT_O_WRITE  (1 << 1)
+#define DUNIT_O_CREATE (1 << 2)
+#define DUNIT_O_TRUNC  (1 << 3)
+#define DUNIT_O_APPEND (1 << 4)
+
+static int dunit_oflags(int f)
+{
+	int d = 0;
+	switch (f & O_ACCMODE) {
+	case O_RDONLY: d |= DUNIT_O_READ; break;
+	case O_WRONLY: d |= DUNIT_O_WRITE; break;
+	case O_RDWR:   d |= DUNIT_O_READ | DUNIT_O_WRITE; break;
+	}
+	if (f & O_CREAT)  d |= DUNIT_O_CREATE;
+	if (f & O_TRUNC)  d |= DUNIT_O_TRUNC;
+	if (f & O_APPEND) d |= DUNIT_O_APPEND;
+	/* O_CLOEXEC/O_LARGEFILE/O_NONBLOCK/… have no Dunit equivalent yet and are
+	 * intentionally dropped (not faked): the kernel would reject unknown bits. */
+	return d;
+}
+
+/* mode is accepted for POSIX source compatibility; Dunit Open has no mode arg. */
+hidden long __dunit_open(const char *path, int flags, int mode)
+{
+	(void)mode;
+	return __syscall(SYS_open, path, strlen(path), dunit_oflags(flags));
+}
+
+hidden long __dunit_open_cp(const char *path, int flags, int mode)
+{
+	(void)mode;
+	return __syscall_cp(SYS_open, path, strlen(path), dunit_oflags(flags));
+}

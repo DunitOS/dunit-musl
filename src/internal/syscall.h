@@ -373,17 +373,15 @@ static inline long __alt_socketcall(int sys, int sock, int cp, syscall_arg_t a, 
 #define SIOCGSTAMPNS_OLD 0x8907
 #endif
 
-#ifdef SYS_open
-#define __sys_open2(x,pn,fl) __syscall2(SYS_open, pn, (fl)|O_LARGEFILE)
-#define __sys_open3(x,pn,fl,mo) __syscall3(SYS_open, pn, (fl)|O_LARGEFILE, mo)
-#define __sys_open_cp2(x,pn,fl) __syscall_cp2(SYS_open, pn, (fl)|O_LARGEFILE)
-#define __sys_open_cp3(x,pn,fl,mo) __syscall_cp3(SYS_open, pn, (fl)|O_LARGEFILE, mo)
-#else
-#define __sys_open2(x,pn,fl) __syscall3(SYS_openat, AT_FDCWD, pn, (fl)|O_LARGEFILE)
-#define __sys_open3(x,pn,fl,mo) __syscall4(SYS_openat, AT_FDCWD, pn, (fl)|O_LARGEFILE, mo)
-#define __sys_open_cp2(x,pn,fl) __syscall_cp3(SYS_openat, AT_FDCWD, pn, (fl)|O_LARGEFILE)
-#define __sys_open_cp3(x,pn,fl,mo) __syscall_cp4(SYS_openat, AT_FDCWD, pn, (fl)|O_LARGEFILE, mo)
-#endif
+/* Dunit port: route every opener through the src/dunit/open.c adapter, which
+ * reshapes the arguments (path pointer + length) and translates POSIX open-flag
+ * values to Dunit's own bit layout. The `x` dispatch arg is unused. */
+hidden long __dunit_open(const char *, int, int);
+hidden long __dunit_open_cp(const char *, int, int);
+#define __sys_open2(x,pn,fl) __dunit_open((pn),(fl),0)
+#define __sys_open3(x,pn,fl,mo) __dunit_open((pn),(fl),(mo))
+#define __sys_open_cp2(x,pn,fl) __dunit_open_cp((pn),(fl),0)
+#define __sys_open_cp3(x,pn,fl,mo) __dunit_open_cp((pn),(fl),(mo))
 
 #define __sys_open(...) __SYSCALL_DISP(__sys_open,,__VA_ARGS__)
 #define sys_open(...) __syscall_ret(__sys_open(__VA_ARGS__))

@@ -31,6 +31,11 @@ DUNIT_MAP = {
     "read": 3,            # Read(fd, buf, len)      -> Dunit Read
     "write": 4,           # Write(fd, buf, len)     -> Dunit Write
     "close": 6,           # Close(fd)               -> Dunit Close
+    # open is NOT a plain number map: the kernel takes Open(path_ptr, path_len,
+    # dunit_flags) while POSIX passes open(path_ptr, flags, mode) with Linux flag
+    # VALUES. The number lets src/dunit/open.c reach the kernel; that adapter
+    # computes the length and translates the flag bits (see the file).
+    "open": 5,            # -> Dunit Open (via src/dunit/open.c adapter)
     "exit": 0,            # exit(code)              -> Dunit Exit
     "exit_group": 0,      # exit_group(code)        -> Dunit Exit (no threads to signal yet)
     "getpid": 17,         # getpid()                -> Dunit GetPid
