@@ -345,6 +345,17 @@ unknown) fail "$0: unable to detect target arch; try $0 --target=..." ;;
 esac
 
 #
+# Dunit OS target recognition. The CPU arch is still x86_64; the Dunit delta
+# (syscall numbers + crt/adaptation layer) lives in this fork's arch and src
+# trees, not in the compiler. We only note the OS here so a Dunit build is
+# identifiable and is never silently mistaken for a Linux build. See PORTING.md.
+#
+case "$target" in
+*-dunit|*-dunit-*)
+	printf "configuring for Dunit OS target: %s (arch %s)\n" "$target" "$ARCH" ;;
+esac
+
+#
 # Try to get a conforming C99 freestanding environment
 #
 tryflag CFLAGS_C99FSE -std=c99
