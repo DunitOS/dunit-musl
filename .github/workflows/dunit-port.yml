@@ -37,13 +37,35 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build the x86_64-dunit static libc
+      - name: Build the x86_64-dunit static libc and smoke-test dunit-cc
         run: |
           set -e
           ./tools/dunit/build-libc.sh "$PWD/_sysroot"
           test -f _sysroot/lib/libc.a
           test -f _sysroot/lib/crt1.o
+          test -x _sysroot/bin/dunit-cc
           # The thread pointer must install via the native Dunit SetThreadPointer
           # (39 = 0x27), not Linux arch_prctl.
           objdump -d _sysroot/lib/libc.a | grep -A3 '<__set_thread_area>:' | grep -q 'mov .*0x27,%eax'
-          echo "x86_64-dunit libc.a builds; thread pointer uses native SetThreadPointer"
+          # dunit-cc links a static ET_EXEC against the sysroot.
+          printf 'int main(void){return 0;}\n' > /tmp/t.c
+          _sysroot/bin/dunit-cc -O2 -o /tmp/t /tmp/t.c
+          readelf -h /tmp/t | grep -q 'EXEC'
+          echo "x86_64-dunit libc.a builds; SetThreadPointer native; dunit-cc links ET_EXEC"
+
+  delta:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # need the pinned upstream base in history
+      - name: Regenerate and show the Dunit delta vs upstream
+        run: |
+          set -e
+          ./tools/dunit/gen-delta.sh
+          cat DELTA.md
+          # M6.1: never delete upstream files — exclude them from the build instead.
+          if grep -q "Deleted upstream files" DELTA.md; then
+            echo "ERROR: the Dunit delta deletes upstream files"; exit 1
+          fi
+          echo "delta is confined to the Dunit adaptation layer"
