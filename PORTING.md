@@ -119,10 +119,12 @@ on the kernel, and the `fs:` surface (open/read/write/close, stat, directory
 iteration, buffered stdio, getcwd/chdir, mkdir/rmdir/unlink/rename/fsync) is
 complete. `build-libc.sh` also installs a
 `<sysroot>/bin/dunit-cc` wrapper that compiles+links a static `x86_64-dunit`
-program in one command (the M6.4 cross-"toolchain"); the dunit-os Makefile builds
-its C tests through it. Remaining:
+program in one command (plus prefixed `x86_64-dunit-cc`/`-ar`/`-strip` and a
+`share/dunit-sdk/manifest` recording the ABI/libc versions, profile and license
+— the M6.4 cross-"toolchain"); the dunit-os Makefile builds its C tests through
+it. Remaining:
 - `signal:`/`network:`/`ldso:` — stubbed to documented `ENOSYS`; `AT_PHDR` auxv
-  only needed once a program uses `__thread` TLS variables.
-- Packaging: the upstream diff/version table (M6.2).
+  only needed once a program uses `__thread` TLS variables. `lseek` has no kernel
+  seek yet (files are read sequentially).
 
 Each lands with its own themed commit and a `qemu_test.py` suite entry.
