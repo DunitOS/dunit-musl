@@ -10,20 +10,15 @@
 
 static int __futex4_cp(volatile void *addr, int op, int val, const struct timespec *to)
 {
-	int r;
-#ifdef SYS_futex_time64
-	time_t s = to ? to->tv_sec : 0;
-	long ns = to ? to->tv_nsec : 0;
-	r = -ENOSYS;
-	if (SYS_futex == SYS_futex_time64 || !IS32BIT(s))
-		r = __syscall_cp(SYS_futex_time64, addr, op, val,
-			to ? ((long long[]){s, ns}) : 0);
-	if (SYS_futex == SYS_futex_time64 || r!=-ENOSYS) return r;
-	to = to ? (void *)(long[]){CLAMP(s), ns} : 0;
-#endif
-	r = __syscall_cp(SYS_futex, addr, op, val, to);
-	if (r != -ENOSYS) return r;
-	return __syscall_cp(SYS_futex, addr, op & ~FUTEX_PRIVATE, val, to);
+	/* Dunit port: wait via the native FutexWait dispatcher. `to` is a relative
+	 * timeout (or NULL = forever); convert to milliseconds. Note: unlike
+	 * upstream this is not a cancellation point yet (no Dunit cancel syscall). */
+	long ms = 0;
+	if (to) {
+		ms = (long)to->tv_sec * 1000 + to->tv_nsec / 1000000;
+		if (ms <= 0) ms = 1;
+	}
+	return __dunit_futex(addr, op, val, ms);
 }
 
 static volatile int dummy = 0;

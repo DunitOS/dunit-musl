@@ -68,7 +68,7 @@
 #define __NR_fork                    1145307184
 #define __NR_vfork                   1145307185
 #define __NR_execve                  1145307186
-#define __NR_exit                    0
+#define __NR_exit                    31
 #define __NR_wait4                   1145307187
 #define __NR_kill                    1145307188
 #define __NR_uname                   1145307189

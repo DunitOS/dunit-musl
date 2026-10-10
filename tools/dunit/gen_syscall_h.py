@@ -36,8 +36,6 @@ DUNIT_MAP = {
     # VALUES. The number lets src/dunit/open.c reach the kernel; that adapter
     # computes the length and translates the flag bits (see the file).
     "open": 5,            # -> Dunit Open (via src/dunit/open.c adapter)
-    "exit": 0,            # exit(code)              -> Dunit Exit
-    "exit_group": 0,      # exit_group(code)        -> Dunit Exit (no threads to signal yet)
     "getpid": 17,         # getpid()                -> Dunit GetPid
     "sched_yield": 24,    # sched_yield()           -> Dunit Yield
     # Anonymous memory for malloc. Dunit's prot bits (R=1/W=2/X=4) and the
@@ -47,6 +45,11 @@ DUNIT_MAP = {
     "mmap": 7,            # mmap(addr,len,prot,flags,-1,0) -> Dunit Mmap (anon only)
     "munmap": 34,         # munmap(addr,len)        -> Dunit Munmap
     "mprotect": 35,       # mprotect(addr,len,prot) -> Dunit Mprotect
+    # Thread vs process termination: musl ends a THREAD with SYS_exit and the
+    # whole PROCESS with SYS_exit_group. Dunit splits these too, so exit ->
+    # ThreadExit (just this thread) and exit_group -> Exit (the process).
+    "exit": 31,           # -> Dunit ThreadExit
+    "exit_group": 0,      # -> Dunit Exit (process)
     # set_tid_address returns the caller's tid (its primary value); Dunit has no
     # clear-child-tid-on-exit, so that side effect is intentionally a documented
     # no-op. The returned tid is correct.

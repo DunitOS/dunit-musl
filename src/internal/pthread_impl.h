@@ -165,18 +165,20 @@ hidden void __unmapself(void *, size_t);
 hidden int __timedwait(volatile int *, int, clockid_t, const struct timespec *, int);
 hidden int __timedwait_cp(volatile int *, int, clockid_t, const struct timespec *, int);
 hidden void __wait(volatile int *, volatile int *, int, int);
+hidden long __dunit_futex(volatile void *addr, int op, int val, long timeout_ms);
+
 static inline void __wake(volatile void *addr, int cnt, int priv)
 {
 	if (priv) priv = FUTEX_PRIVATE;
 	if (cnt<0) cnt = INT_MAX;
-	__syscall(SYS_futex, addr, FUTEX_WAKE|priv, cnt) != -ENOSYS ||
-	__syscall(SYS_futex, addr, FUTEX_WAKE, cnt);
+	/* Dunit port: native FutexWake via the dispatcher (no SYS_futex). */
+	__dunit_futex(addr, FUTEX_WAKE|priv, cnt, 0);
 }
 static inline void __futexwait(volatile void *addr, int val, int priv)
 {
 	if (priv) priv = FUTEX_PRIVATE;
-	__syscall(SYS_futex, addr, FUTEX_WAIT|priv, val, 0) != -ENOSYS ||
-	__syscall(SYS_futex, addr, FUTEX_WAIT, val, 0);
+	/* Dunit port: native FutexWait, timeout_ms 0 = forever. */
+	__dunit_futex(addr, FUTEX_WAIT|priv, val, 0);
 }
 
 hidden void __acquire_ptc(void);

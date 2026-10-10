@@ -10,8 +10,10 @@ void __wait(volatile int *addr, volatile int *waiters, int val, int priv)
 	}
 	if (waiters) a_inc(waiters);
 	while (*addr==val) {
-		__syscall(SYS_futex, addr, FUTEX_WAIT|priv, val, 0) != -ENOSYS
-		|| __syscall(SYS_futex, addr, FUTEX_WAIT, val, 0);
+		/* Dunit port: native FutexWait (timeout 0 = forever) instead of the
+		 * Linux SYS_futex, so a contended waiter actually blocks in the kernel
+		 * rather than busy-spinning on an ENOSYS. */
+		__dunit_futex(addr, FUTEX_WAIT|priv, val, 0);
 	}
 	if (waiters) a_dec(waiters);
 }
