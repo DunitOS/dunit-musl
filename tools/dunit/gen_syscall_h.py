@@ -50,10 +50,10 @@ DUNIT_MAP = {
     # ThreadExit (just this thread) and exit_group -> Exit (the process).
     "exit": 31,           # -> Dunit ThreadExit
     "exit_group": 0,      # -> Dunit Exit (process)
-    # set_tid_address returns the caller's tid (its primary value); Dunit has no
-    # clear-child-tid-on-exit, so that side effect is intentionally a documented
-    # no-op. The returned tid is correct.
-    "set_tid_address": 32,  # -> Dunit GetTid
+    # set_tid_address registers the clear-child-tid word AND returns the tid.
+    # The kernel zeroes that word + futex-wakes it on thread exit, which musl
+    # relies on (Linux CLONE_CHILD_CLEARTID) to release __thread_list_lock.
+    "set_tid_address": 75,  # -> Dunit SetTidAddress
 }
 
 SENTINEL_BASE = 0x44440000  # 'DD..' — clearly not a Dunit syscall; kernel -> ENOSYS

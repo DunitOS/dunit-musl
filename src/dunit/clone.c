@@ -23,6 +23,7 @@ struct dunit_thread {
 	int (*fn)(void *);
 	void *arg;
 	void *tls;
+	void *ctid;
 };
 
 __attribute__((no_stack_protector))
@@ -31,6 +32,11 @@ static _Noreturn void dunit_thread_start(void *p)
 	struct dunit_thread *d = p;
 	/* Must run before anything touches %fs (errno, stack guard, TLS vars). */
 	__set_thread_area(d->tls);
+	/* Register clear-child-tid (CLONE_CHILD_CLEARTID): the kernel zeroes this
+	 * word and futex-wakes it when the thread exits, releasing the thread-list
+	 * lock musl holds across SYS_exit. */
+	if (d->ctid)
+		__syscall(SYS_set_tid_address, d->ctid);
 	d->fn(d->arg);
 	/* musl's thread entry exits via SYS_exit itself; this is a safety net. */
 	__syscall(SYS_exit, 0);
@@ -39,14 +45,9 @@ static _Noreturn void dunit_thread_start(void *p)
 
 /* Matches the variadic prototype in pthread_impl.h. pthread_create calls this as
  * __clone(fn, stack, flags, arg, &tid, TP_ADJ(td), &thread_list_lock). We use
- * fn/stack/arg/ptid/tls.
- *
- * WIP: ctid (clear-child-tid, = &__thread_list_lock) is NOT yet honored. On
- * Linux the kernel clears *ctid and futex-wakes it when the thread dies
- * (CLONE_CHILD_CLEARTID); musl's __pthread_exit relies on this to release the
- * thread-list lock it holds across its final SYS_exit. Dunit has no equivalent,
- * so two threads exiting at once deadlock on that lock. The fix is a kernel
- * "clear word + futex-wake on thread exit" primitive registered here. */
+ * fn/stack/arg/ptid/tls and ctid: the child registers ctid via SetTidAddress so
+ * the kernel clears it + futex-wakes on thread exit (CLONE_CHILD_CLEARTID),
+ * releasing the thread-list lock musl holds across SYS_exit. */
 int __clone(int (*fn)(void *), void *stack, int flags, void *arg, ...)
 {
 	(void)flags;
@@ -54,6 +55,7 @@ int __clone(int (*fn)(void *), void *stack, int flags, void *arg, ...)
 	va_start(ap, arg);
 	pid_t *ptid = va_arg(ap, pid_t *);
 	void *tls = va_arg(ap, void *);
+	void *ctid = va_arg(ap, void *);
 	va_end(ap);
 
 	uintptr_t sp = (uintptr_t)stack & -16;
@@ -63,6 +65,7 @@ int __clone(int (*fn)(void *), void *stack, int flags, void *arg, ...)
 	d->fn = fn;
 	d->arg = arg;
 	d->tls = tls;
+	d->ctid = ctid;
 
 	long tid = __syscall(DUNIT_SYS_THREAD_CREATE,
 			     (long)(uintptr_t)dunit_thread_start, (long)sp, (long)(uintptr_t)d);

@@ -226,7 +226,7 @@
 #define __NR_epoll_wait_old          1145307341
 #define __NR_remap_file_pages        1145307342
 #define __NR_getdents64              1145307343
-#define __NR_set_tid_address         32
+#define __NR_set_tid_address         75
 #define __NR_restart_syscall         1145307344
 #define __NR_semtimedop              1145307345
 #define __NR_fadvise64               1145307346

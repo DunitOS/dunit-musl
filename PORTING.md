@@ -80,23 +80,27 @@ checked by serial markers (the M6 acceptance target). The existing freestanding
 - `vm:` — `mmap`/`munmap`/`mprotect` map 1:1 onto the native Dunit VM syscalls
   (prot and `MAP_PRIVATE|MAP_ANONYMOUS` flag values already match). Verified with
   a static malloc/calloc/1 MiB-mmap test.
+- `fs:` (files) — `open` goes through `src/dunit/open.c`: the `__sys_open*` macros
+  pass the path as pointer+length and translate POSIX flags to Dunit `OpenFlags`
+  (the kernel's `Open` is not Linux-shaped). Verified: `open`/`read`/`write`/
+  `close` + a write+read roundtrip in `/persist`.
+- `thread:` — pthreads work. `__clone` (src/dunit/clone.c) starts a thread via the
+  native `ThreadCreate` with a trampoline that installs the thread pointer
+  (`SetThreadPointer`) and registers clear-child-tid (`SetTidAddress`) before
+  running musl's entry. The futex dispatcher (src/dunit/futex.c, wired into
+  `__wake`/`__futexwait`/`__wait`/`__timedwait`) maps Linux `SYS_futex` onto the
+  native `FutexWait`/`FutexWake`; `exit`→`ThreadExit` vs `exit_group`→`Exit`;
+  `__unmapself` uses native numbers. The kernel's new `SetTidAddress` zeroes the
+  clear-child-tid word + futex-wakes it on thread exit, releasing the thread-list
+  lock musl holds across `SYS_exit` (the Linux `CLONE_CHILD_CLEARTID` contract).
+  Verified: `pthread_create` ×2 + a contended `pthread_mutex` + `pthread_join`
+  (counter=10000, both return values correct).
 
-Next:
-- `thread:` — **infrastructure landed, one blocker left.** `__clone` (src/dunit/
-  clone.c) starts a thread via the native ThreadCreate with a trampoline that
-  installs the thread pointer (SetThreadPointer) before running musl's entry;
-  the futex dispatcher (src/dunit/futex.c, wired into `__wake`/`__futexwait`/
-  `__wait`/`__timedwait`) maps Linux SYS_futex onto the native FutexWait/
-  FutexWake; `exit`→ThreadExit vs `exit_group`→Exit; `__unmapself` uses the
-  native numbers. Verified: both threads create, run, and the mutex fast path
-  works. **Blocker:** two threads exiting concurrently deadlock — musl's
-  `__pthread_exit` holds `__thread_list_lock` across its final `SYS_exit` and
-  relies on the Linux CLONE_CHILD_CLEARTID contract (kernel clears `*ctid` and
-  futex-wakes it on thread death) to release it. Dunit has no clear-child-tid, so
-  the lock is never released. **Fix:** add a kernel "register a word to clear +
-  futex-wake when this thread exits" primitive (set_tid_address-style) and have
-  `__clone`'s trampoline register `ctid`; then ThreadExit clears it.
-- `fs:` files — stdio read path (`__stdio_read`/`readv` → native Read), plus
-  `stat`/`getdents` struct translation.
+The static C acceptance suite (`hello`/`stdio`/`malloc`/`file`/`thread`) all run
+on the kernel. Remaining:
+- `fs:` — stdio read path (`__stdio_read`/`readv` → native `Read`), `stat`/
+  `getdents` struct translation.
+- `signal:`/`network:`/`ldso:` — stubbed to documented `ENOSYS`; `AT_PHDR` auxv
+  only needed once a program uses `__thread` TLS variables.
 
 Each lands with its own themed commit and a `qemu_test.py` suite entry.
