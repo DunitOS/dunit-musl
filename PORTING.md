@@ -75,8 +75,19 @@ checked by serial markers (the M6 acceptance target). The existing freestanding
 - First milestone verified end-to-end: a static `musl_hello` (musl `crt1` +
   `__libc_start_main` + `__init_tls` + `write()`) runs on the Green Tea Kernel
   via `dunit-os/tools/qemu_test.py` and exits 0.
+- `fs:` (write path) — `writev`/`__stdio_write` loop over the native `Write`, so
+  buffered stdio (`printf`/`fflush`) works. Verified with a static printf test.
+- `vm:` — `mmap`/`munmap`/`mprotect` map 1:1 onto the native Dunit VM syscalls
+  (prot and `MAP_PRIVATE|MAP_ANONYMOUS` flag values already match). Verified with
+  a static malloc/calloc/1 MiB-mmap test.
 
-Next: the `fs:` adapters (`writev`/`readv` → `Write`/`Read` loops so stdio/
-`printf` works), then `vm:` (`mmap`/`brk` → Dunit VM) for `malloc`, then
-`thread:` (TLS-from-phdrs needs the kernel's `AT_PHDR`, plus `clone`/futex).
+Next:
+- `fs:` (files) — `open` needs an arg reshape (Dunit `Open(ptr,len,flags)` vs
+  POSIX `open(ptr,flags,mode)`); `stat`/`getdents` need struct translation to
+  the Dunit `UserFileStat`/`Readdir` shapes. Plus the stdio read path
+  (`__stdio_read`/`readv` → `Read`).
+- `thread:` — needs the kernel to add `AT_PHDR`/`AT_PHENT`/`AT_PHNUM` to the auxv
+  (musl builds TLS from program headers), then `clone`/futex/`set_tid_address`
+  semantics onto Dunit's `ThreadCreate`/`Futex*`.
+
 Each lands with its own themed commit and a `qemu_test.py` suite entry.
