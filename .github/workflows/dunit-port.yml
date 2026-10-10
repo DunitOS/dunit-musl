@@ -35,11 +35,15 @@ jobs:
 
   dunit-build:
     runs-on: ubuntu-latest
-    continue-on-error: true   # WIP: becomes the real gate as the port lands
     steps:
       - uses: actions/checkout@v4
-      - name: Attempt the x86_64-dunit libc build (progress tracker)
+      - name: Build the x86_64-dunit static libc
         run: |
-          echo "Dunit musl port build is WIP — see PORTING.md for the thematic steps."
-          echo "Target: static libc.a for x86_64-dunit against dunit-os ABI v0."
-          # TODO(build:): ./configure --target=x86_64-dunit ... && make
+          set -e
+          ./tools/dunit/build-libc.sh "$PWD/_sysroot"
+          test -f _sysroot/lib/libc.a
+          test -f _sysroot/lib/crt1.o
+          # The thread pointer must install via the native Dunit SetThreadPointer
+          # (39 = 0x27), not Linux arch_prctl.
+          objdump -d _sysroot/lib/libc.a | grep -A3 '<__set_thread_area>:' | grep -q 'mov .*0x27,%eax'
+          echo "x86_64-dunit libc.a builds; thread pointer uses native SetThreadPointer"

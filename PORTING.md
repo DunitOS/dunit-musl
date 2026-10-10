@@ -62,6 +62,21 @@ checked by serial markers (the M6 acceptance target). The existing freestanding
 
 ## Status
 
-**Setup complete; the port itself is not started.** This commit establishes the
-fork, provenance (`UPSTREAM.md`), this plan, and CI. The first porting commit is
-`build:` (the `x86_64-dunit` target), then `syscall:` (numbers + thin layer).
+**The port has started and runs on the kernel.** Done so far:
+
+- `build:` — `x86_64-dunit` target recognised by `configure`; reproducible
+  static-libc build via `tools/dunit/build-libc.sh` (host x86_64 compiler, since
+  the syscall instruction/registers already match). Full `libc.a` + crt objects
+  build cleanly.
+- `syscall:` — `arch/x86_64/bits/syscall.h.in` regenerated from a documented
+  Linux-name → Dunit-number map (`tools/dunit/gen_syscall_h.py`); unmapped calls
+  become `-ENOSYS` sentinels (M6.1). `__set_thread_area.s` installs the thread
+  pointer via the native `SetThreadPointer` (39).
+- First milestone verified end-to-end: a static `musl_hello` (musl `crt1` +
+  `__libc_start_main` + `__init_tls` + `write()`) runs on the Green Tea Kernel
+  via `dunit-os/tools/qemu_test.py` and exits 0.
+
+Next: the `fs:` adapters (`writev`/`readv` → `Write`/`Read` loops so stdio/
+`printf` works), then `vm:` (`mmap`/`brk` → Dunit VM) for `malloc`, then
+`thread:` (TLS-from-phdrs needs the kernel's `AT_PHDR`, plus `clone`/futex).
+Each lands with its own themed commit and a `qemu_test.py` suite entry.
