@@ -1,0 +1,45 @@
+name: dunit-port
+
+# CI for the Dunit OS musl port. The provenance/plan gate is authoritative and
+# must stay green; the cross-build is a work-in-progress progress tracker that
+# turns into the real gate as the syscall/crt/build layers land (see PORTING.md).
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  provenance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify fork provenance and porting plan
+        run: |
+          set -e
+          test -f UPSTREAM.md
+          test -f PORTING.md
+          grep -q "git.musl-libc.org" UPSTREAM.md
+          grep -q "b1efda5b91735e33635376ca11c9b497a1c66e39" UPSTREAM.md
+          echo "provenance + porting plan present"
+
+  tree-sanity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upstream tree configures (host sanity — the fork is intact)
+        run: |
+          set -e
+          ./configure --disable-shared >/tmp/configure.log 2>&1 || (tail -40 /tmp/configure.log; exit 1)
+          echo "musl tree configures for the host; fork is unmodified where it must be"
+
+  dunit-build:
+    runs-on: ubuntu-latest
+    continue-on-error: true   # WIP: becomes the real gate as the port lands
+    steps:
+      - uses: actions/checkout@v4
+      - name: Attempt the x86_64-dunit libc build (progress tracker)
+        run: |
+          echo "Dunit musl port build is WIP — see PORTING.md for the thematic steps."
+          echo "Target: static libc.a for x86_64-dunit against dunit-os ABI v0."
+          # TODO(build:): ./configure --target=x86_64-dunit ... && make

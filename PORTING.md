@@ -1,0 +1,67 @@
+# Porting musl to Dunit OS (`x86_64-dunit`, static-first)
+
+This fork ports musl to the **Green Tea Kernel's native ABI** — not a new CPU, a
+new **OS**. The kernel takes no Linux syscall numbers and exports no Linux kernel
+structs; musl's public headers stay as the portable C facade, and a thin Dunit
+adaptation layer translates POSIX flags/`errno`/paths/`stat`/dirents/clocks/
+process ops into Dunit contracts. See `DUNIT_OS_TECHNICAL_ROADMAP.md` §M6 in the
+`dunit-os` repo.
+
+## The ABI contract (source of truth)
+
+The target ABI is **Dunit Userspace ABI v0**, generated and documented in the
+`dunit-os` repo under `abi/`:
+
+- `abi/include/dunit/syscall.h` — `SYS_<NAME>` numbers (NOT Linux numbers)
+- `abi/include/dunit/errno.h` — `DUNIT_E<NAME>` (== POSIX errno magnitudes)
+- `abi/include/dunit/rights.h` — handle capability bits
+- `abi/README.md` — syscall calling convention, errno, process-entry stack
+  (argc/argv/envp/**auxv**: AT_PAGESZ/AT_SECURE/AT_RANDOM), ELF contract
+  (ELF64 LE `ET_EXEC`, static-first), capability query (`sys_abi_query`)
+
+When this fork is used as `dunit-os/toolchains/dunit-musl`, those headers live at
+`../../abi/include/dunit/`. The low-level syscall mechanism already matches:
+musl's x86_64 `syscall` instruction convention (`rax`=number, `rdi/rsi/rdx/r10/
+r8/r9`=args, `rax`=result) is exactly Dunit's. The port's work is the NUMBERS and
+the SEMANTICS, not the instruction.
+
+A reference crt0 that already parses the Dunit initial stack + auxv lives at
+`dunit-os/userspace/ctests/crt0.s` — the seed for this port's `crt1`.
+
+## Workflow — thematic commits
+
+Carry the Dunit delta as small, reviewable, themed commits (roadmap M6.2):
+
+| area | scope |
+|---|---|
+| `build`   | `x86_64-dunit` target, `configure`/`Makefile` wiring, sysroot layout |
+| `crt`     | `crt1`/`Scrt1`/`crti`/`crtn` for the Dunit initial stack + auxv |
+| `syscall` | Dunit syscall numbers + the `__syscall` thin layer to Dunit's native set |
+| `fs`      | `open`/`stat`/dirents/paths → Dunit VFS contracts |
+| `vm`      | `mmap`/`mprotect`/`brk` → Dunit VM syscalls |
+| `thread`  | TLS (Variant II, already in the ELF/kernel), `clone`/futex → Dunit |
+| `signal`  | signal surface (stub to documented `ENOSYS` until the kernel grows it) |
+| `ldso`    | deferred — static-first; no dynamic linker yet |
+
+## Rules (roadmap M6.1)
+
+- No fake success. An unimplemented function returns a **documented** `ENOSYS`/
+  `ENOTSUP` or is excluded from the declared profile — never a silent fake OK.
+- Don't delete temporarily-unsupported subsystems from the tree; exclude them from
+  the build profile so they can be restored without re-fetching upstream.
+- `x86_64-dunit` is the logical target name — never pass a Dunit binary off as
+  `x86_64-linux-musl`.
+
+## Build & test (as the port lands)
+
+Build produces a static `libc.a` for `x86_64-dunit`, installed into the Dunit
+sysroot. Conformance is driven from the `dunit-os` repo via `tools/qemu_test.py`:
+a static-musl `hello`/`file`/`malloc`/`thread` suite runs on the kernel and is
+checked by serial markers (the M6 acceptance target). The existing freestanding
+`c_hello` (`dunit-os/userspace/ctests/`) is the no-libc baseline this builds on.
+
+## Status
+
+**Setup complete; the port itself is not started.** This commit establishes the
+fork, provenance (`UPSTREAM.md`), this plan, and CI. The first porting commit is
+`build:` (the `x86_64-dunit` target), then `syscall:` (numbers + thin layer).
