@@ -1,12 +1,9 @@
 #include <unistd.h>
-#include <fcntl.h>
+#include <string.h>
 #include "syscall.h"
 
+/* Dunit port: Unlink takes (path_ptr, path_len). */
 int unlink(const char *path)
 {
-#ifdef SYS_unlink
-	return syscall(SYS_unlink, path);
-#else
-	return syscall(SYS_unlinkat, AT_FDCWD, path, 0);
-#endif
+	return syscall(SYS_unlink, path, strlen(path));
 }

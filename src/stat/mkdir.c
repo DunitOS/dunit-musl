@@ -1,12 +1,11 @@
 #include <sys/stat.h>
-#include <fcntl.h>
+#include <string.h>
 #include "syscall.h"
 
+/* Dunit port: Mkdir takes (path_ptr, path_len); mode has no Dunit equivalent
+ * yet and is dropped. */
 int mkdir(const char *path, mode_t mode)
 {
-#ifdef SYS_mkdir
-	return syscall(SYS_mkdir, path, mode);
-#else
-	return syscall(SYS_mkdirat, AT_FDCWD, path, mode);
-#endif
+	(void)mode;
+	return syscall(SYS_mkdir, path, strlen(path));
 }

@@ -32,8 +32,10 @@ UPSTREAM.md
  src/internal/pthread_impl.h           |  10 +-
  src/internal/syscall.h                |  20 +-
  src/stat/fstatat.c                    | 173 ++------
+ src/stat/mkdir.c                      |  11 +-
  src/stdio/__stdio_read.c              |  21 +-
  src/stdio/__stdio_write.c             |  53 +--
+ src/stdio/rename.c                    |  11 +-
  src/thread/__timedwait.c              |  23 +-
  src/thread/__wait.c                   |   6 +-
  src/thread/x86_64/__set_thread_area.s |  17 +-
@@ -43,11 +45,13 @@ UPSTREAM.md
  src/time/clock_nanosleep.c            |  63 ++-
  src/unistd/chdir.c                    |   5 +-
  src/unistd/readv.c                    |  18 +-
+ src/unistd/rmdir.c                    |  10 +-
+ src/unistd/unlink.c                   |   9 +-
  src/unistd/writev.c                   |  19 +-
 ```
 
 ## Summary
 
 ```
- 31 files changed, 1390 insertions(+), 797 deletions(-)
+ 35 files changed, 1416 insertions(+), 823 deletions(-)
 ```

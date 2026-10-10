@@ -50,6 +50,14 @@ DUNIT_MAP = {
     "mmap": 7,            # mmap(addr,len,prot,flags,-1,0) -> Dunit Mmap (anon only)
     "munmap": 34,         # munmap(addr,len)        -> Dunit Munmap
     "mprotect": 35,       # mprotect(addr,len,prot) -> Dunit Mprotect
+    # File management. All path-based Dunit calls take (ptr,len), so the wrappers
+    # (unlink/rmdir/mkdir/rename, in src/unistd + src/stat + src/stdio) are
+    # reshaped to pass strlen. fsync(fd) matches 1:1.
+    "unlink": 68,         # -> Dunit Unlink (also rmdir; remove_at handles dirs)
+    "rmdir": 77,          # -> Dunit Rmdir (removes an empty dir)
+    "mkdir": 70,          # -> Dunit Mkdir (mode dropped)
+    "rename": 69,         # -> Dunit Rename (old_ptr,old_len,new_ptr,new_len)
+    "fsync": 72,          # fsync(fd)               -> Dunit Fsync
     # Thread vs process termination: musl ends a THREAD with SYS_exit and the
     # whole PROCESS with SYS_exit_group. Dunit splits these too, so exit ->
     # ThreadExit (just this thread) and exit_group -> Exit (the process).
