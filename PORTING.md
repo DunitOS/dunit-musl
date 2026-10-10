@@ -103,11 +103,17 @@ checked by serial markers (the M6 acceptance target). The existing freestanding
   `UserFileStat` (type + size) into `struct stat` (`st_mode` type bits +
   `st_size`; rest zero). Path-based only; fstat-by-fd / dirfd-relative report a
   documented `ENOSYS`. Verified: `stat` of a file + a directory.
+- `fs:` (getdents) — `opendir` snapshots a directory via the path-based native
+  `Readdir`; `readdir`/`closedir` serialize/free that snapshot (no fd+offset
+  getdents in the kernel, so `dir->fd` is -1 and `dirfd()` is not a real fd).
+  Verified: `opendir`/`readdir`/`closedir` list `/app` (64 entries) and find a
+  known name.
 
 The static C acceptance suite (`hello`/`stdio`/`malloc`/`file`/`thread`) all run
-on the kernel. Remaining:
-- `fs:` — `getdents` (directory iteration) → Dunit `Readdir` struct translation.
+on the kernel, and the `fs:` surface (open/read/write/close, stat, directory
+iteration, buffered stdio) is complete. Remaining:
 - `signal:`/`network:`/`ldso:` — stubbed to documented `ENOSYS`; `AT_PHDR` auxv
   only needed once a program uses `__thread` TLS variables.
+- Packaging: a `dunit-cc` wrapper and the upstream diff/version table (M6.2).
 
 Each lands with its own themed commit and a `qemu_test.py` suite entry.
