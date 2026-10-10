@@ -96,10 +96,13 @@ checked by serial markers (the M6 acceptance target). The existing freestanding
   Verified: `pthread_create` ×2 + a contended `pthread_mutex` + `pthread_join`
   (counter=10000, both return values correct).
 
+- `fs:` (read path) — `__stdio_read`/`readv` fill the caller's buffer with the
+  native `Read` (no readv in the kernel). Verified: `fopen`/`fputs` then
+  `fopen`/`fgets`×2/`fgetc` EOF roundtrip.
+
 The static C acceptance suite (`hello`/`stdio`/`malloc`/`file`/`thread`) all run
 on the kernel. Remaining:
-- `fs:` — stdio read path (`__stdio_read`/`readv` → native `Read`), `stat`/
-  `getdents` struct translation.
+- `fs:` — `stat`/`getdents` struct translation to Dunit `UserFileStat`/`Readdir`.
 - `signal:`/`network:`/`ldso:` — stubbed to documented `ENOSYS`; `AT_PHDR` auxv
   only needed once a program uses `__thread` TLS variables.
 
