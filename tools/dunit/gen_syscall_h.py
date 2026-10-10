@@ -38,6 +38,11 @@ DUNIT_MAP = {
     "open": 5,            # -> Dunit Open (via src/dunit/open.c adapter)
     "getpid": 17,         # getpid()                -> Dunit GetPid
     "sched_yield": 24,    # sched_yield()           -> Dunit Yield
+    # Working directory. getcwd(buf,size) matches Dunit GetCwd(buf,size) (returns
+    # the length, writes the NUL-terminated path), so it maps directly. chdir is
+    # reshaped to (ptr,len) in src/unistd/chdir.c.
+    "getcwd": 22,         # getcwd(buf, size)       -> Dunit GetCwd
+    "chdir": 23,          # -> Dunit Chdir (via src/unistd/chdir.c, ptr+len)
     # Anonymous memory for malloc. Dunit's prot bits (R=1/W=2/X=4) and the
     # MAP_PRIVATE(0x2)|MAP_ANONYMOUS(0x20) flag values match Linux exactly, and
     # the kernel reads only (addr,len,prot,flags) — fd/offset are ignored, so

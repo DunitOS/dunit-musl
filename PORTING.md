@@ -111,7 +111,7 @@ checked by serial markers (the M6 acceptance target). The existing freestanding
 
 The static C acceptance suite (`hello`/`stdio`/`malloc`/`file`/`thread`) all run
 on the kernel, and the `fs:` surface (open/read/write/close, stat, directory
-iteration, buffered stdio) is complete. `build-libc.sh` also installs a
+iteration, buffered stdio, getcwd/chdir) is complete. `build-libc.sh` also installs a
 `<sysroot>/bin/dunit-cc` wrapper that compiles+links a static `x86_64-dunit`
 program in one command (the M6.4 cross-"toolchain"); the dunit-os Makefile builds
 its C tests through it. Remaining:
