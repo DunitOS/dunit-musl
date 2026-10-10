@@ -2,46 +2,37 @@
 #include <errno.h>
 #include "syscall.h"
 
-#define IS32BIT(x) !((x)+0x80000000ULL>>32)
-#define CLAMP(x) (int)(IS32BIT(x) ? (x) : 0x7fffffffU+((0ULL+(x))>>63))
-
-static int __sys_nanosleep_cp(const void *req, void *rem)
-{
-#ifdef SYS_nanosleep
-	return __syscall_cp(SYS_nanosleep, req, rem);
-#else
-	return __syscall_cp(SYS_clock_nanosleep, CLOCK_REALTIME, 0, req, rem);
-#endif
-}
+/* Dunit port: sleep via the native Sleep(ms) syscall (relative, tick-granular).
+ * Converts the timespec to milliseconds (rounding sub-ms up to 1ms). For
+ * TIMER_ABSTIME we subtract the current clock to get a relative delay. Sleeps
+ * are not interruptible on Dunit yet, so this never returns EINTR/rem. */
+#define DUNIT_SYS_SLEEP 19
+#define DUNIT_SYS_CLOCK_GETTIME 76
 
 int __clock_nanosleep(clockid_t clk, int flags, const struct timespec *req, struct timespec *rem)
 {
-	if (clk == CLOCK_THREAD_CPUTIME_ID) return EINVAL;
-#ifdef SYS_clock_nanosleep_time64
-	time_t s = req->tv_sec;
-	long ns = req->tv_nsec;
-	int r = -ENOSYS;
-	if (SYS_clock_nanosleep == SYS_clock_nanosleep_time64 || !IS32BIT(s))
-		r = __syscall_cp(SYS_clock_nanosleep_time64, clk, flags,
-			((long long[]){s, ns}), rem);
-	if (SYS_clock_nanosleep == SYS_clock_nanosleep_time64 || r!=-ENOSYS)
-		return -r;
-	long long extra = s - CLAMP(s);
-	long ts32[2] = { CLAMP(s), ns };
-	if (clk == CLOCK_REALTIME && !flags)
-		r = __sys_nanosleep_cp(&ts32, &ts32);
-	else
-		r = __syscall_cp(SYS_clock_nanosleep, clk, flags, &ts32, &ts32);
-	if (r==-EINTR && rem && !(flags & TIMER_ABSTIME)) {
-		rem->tv_sec = ts32[0] + extra;
-		rem->tv_nsec = ts32[1];
+	(void)rem;
+	long long sec = req->tv_sec;
+	long nsec = req->tv_nsec;
+	if (nsec < 0 || nsec >= 1000000000L)
+		return EINVAL;
+
+	if (flags & TIMER_ABSTIME) {
+		struct timespec now = { 0, 0 };
+		__syscall(DUNIT_SYS_CLOCK_GETTIME, clk, &now);
+		sec -= now.tv_sec;
+		nsec -= now.tv_nsec;
+		if (nsec < 0) { nsec += 1000000000L; sec--; }
+		if (sec < 0)
+			return 0;  /* deadline already in the past */
 	}
-	return -r;
-#else
-	if (clk == CLOCK_REALTIME && !flags)
-		return -__sys_nanosleep_cp(req, rem);
-	return -__syscall_cp(SYS_clock_nanosleep, clk, flags, req, rem);
-#endif
+
+	long long ms = sec * 1000 + (nsec + 999999) / 1000000;
+	if (ms < 0)
+		return EINVAL;
+	if (ms > 0)
+		__syscall(DUNIT_SYS_SLEEP, ms);
+	return 0;
 }
 
 weak_alias(__clock_nanosleep, clock_nanosleep);

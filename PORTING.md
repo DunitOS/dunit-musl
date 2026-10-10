@@ -109,6 +109,11 @@ checked by serial markers (the M6 acceptance target). The existing freestanding
   Verified: `opendir`/`readdir`/`closedir` list `/app` (64 entries) and find a
   known name.
 
+- `time:` — `clock_gettime` over the native `ClockGetTime` (monotonic since
+  boot; `CLOCK_REALTIME` returns the same, documented — no RTC yet) and
+  `nanosleep`/`sleep`/`usleep` over the native `Sleep`. Verified: a ~50 ms sleep
+  advances the monotonic clock and `time()` is nonzero.
+
 The static C acceptance suite (`hello`/`stdio`/`malloc`/`file`/`thread`) all run
 on the kernel, and the `fs:` surface (open/read/write/close, stat, directory
 iteration, buffered stdio, getcwd/chdir) is complete. `build-libc.sh` also installs a

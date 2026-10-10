@@ -39,6 +39,8 @@ UPSTREAM.md
  src/thread/x86_64/__set_thread_area.s |  17 +-
  src/thread/x86_64/__unmapself.s       |  19 +-
  src/thread/x86_64/clone.s             |  32 +-
+ src/time/clock_gettime.c              | 112 +----
+ src/time/clock_nanosleep.c            |  63 ++-
  src/unistd/chdir.c                    |   5 +-
  src/unistd/readv.c                    |  18 +-
  src/unistd/writev.c                   |  19 +-
@@ -47,5 +49,5 @@ UPSTREAM.md
 ## Summary
 
 ```
- 29 files changed, 1350 insertions(+), 656 deletions(-)
+ 31 files changed, 1390 insertions(+), 797 deletions(-)
 ```
