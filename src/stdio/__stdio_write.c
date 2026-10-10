@@ -1,39 +1,32 @@
 #include "stdio_impl.h"
 #include <sys/uio.h>
 
+/* Dunit port: the kernel has no writev, so drain the FILE's pending buffer and
+ * then the new data using the native Write (SYS_write), one buffer at a time.
+ * The partial-write / error accounting matches upstream __stdio_write: an error
+ * before any of the new `buf` has gone out reports 0, otherwise it reports how
+ * many bytes of `buf` were written. Non-cancellable, like upstream stdio. */
 size_t __stdio_write(FILE *f, const unsigned char *buf, size_t len)
 {
-	struct iovec iovs[2] = {
-		{ .iov_base = f->wbase, .iov_len = f->wpos-f->wbase },
-		{ .iov_base = (void *)buf, .iov_len = len }
-	};
-	struct iovec *iov = iovs;
-	size_t rem = iov[0].iov_len + iov[1].iov_len;
-	int iovcnt = 2;
-	ssize_t cnt;
+	const unsigned char *parts[2] = { f->wbase, buf };
+	size_t sizes[2] = { (size_t)(f->wpos - f->wbase), len };
 
-	if (!iov->iov_len) {
-		iov++;
-		iovcnt--;
+	for (int i = 0; i < 2; i++) {
+		const unsigned char *p = parts[i];
+		size_t left = sizes[i];
+		while (left) {
+			ssize_t cnt = syscall(SYS_write, f->fd, p, left);
+			if (cnt <= 0) {
+				f->wpos = f->wbase = f->wend = 0;
+				f->flags |= F_ERR;
+				return i == 0 ? 0 : len - left;
+			}
+			p += cnt;
+			left -= (size_t)cnt;
+		}
 	}
-	for (;;) {
-		cnt = syscall(SYS_writev, f->fd, iov, iovcnt);
-		if (cnt == rem) {
-			f->wend = f->buf + f->buf_size;
-			f->wpos = f->wbase = f->buf;
-			return len;
-		}
-		if (cnt < 0) {
-			f->wpos = f->wbase = f->wend = 0;
-			f->flags |= F_ERR;
-			return iovcnt == 2 ? 0 : len-iov[0].iov_len;
-		}
-		rem -= cnt;
-		if (cnt > iov[0].iov_len) {
-			cnt -= iov[0].iov_len;
-			iov++; iovcnt--;
-		}
-		iov[0].iov_base = (char *)iov[0].iov_base + cnt;
-		iov[0].iov_len -= cnt;
-	}
+
+	f->wend = f->buf + f->buf_size;
+	f->wpos = f->wbase = f->buf;
+	return len;
 }
