@@ -35,6 +35,13 @@ DUNIT_MAP = {
     "exit_group": 0,      # exit_group(code)        -> Dunit Exit (no threads to signal yet)
     "getpid": 17,         # getpid()                -> Dunit GetPid
     "sched_yield": 24,    # sched_yield()           -> Dunit Yield
+    # Anonymous memory for malloc. Dunit's prot bits (R=1/W=2/X=4) and the
+    # MAP_PRIVATE(0x2)|MAP_ANONYMOUS(0x20) flag values match Linux exactly, and
+    # the kernel reads only (addr,len,prot,flags) — fd/offset are ignored, so
+    # file-backed mmap (no MAP_ANONYMOUS) is rejected EINVAL rather than faked.
+    "mmap": 7,            # mmap(addr,len,prot,flags,-1,0) -> Dunit Mmap (anon only)
+    "munmap": 34,         # munmap(addr,len)        -> Dunit Munmap
+    "mprotect": 35,       # mprotect(addr,len,prot) -> Dunit Mprotect
     # set_tid_address returns the caller's tid (its primary value); Dunit has no
     # clear-child-tid-on-exit, so that side effect is intentionally a documented
     # no-op. The returned tid is correct.
