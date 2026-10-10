@@ -99,10 +99,14 @@ checked by serial markers (the M6 acceptance target). The existing freestanding
 - `fs:` (read path) — `__stdio_read`/`readv` fill the caller's buffer with the
   native `Read` (no readv in the kernel). Verified: `fopen`/`fputs` then
   `fopen`/`fgets`×2/`fgetc` EOF roundtrip.
+- `fs:` (stat) — `__fstatat` calls the native `Stat` and maps Dunit's
+  `UserFileStat` (type + size) into `struct stat` (`st_mode` type bits +
+  `st_size`; rest zero). Path-based only; fstat-by-fd / dirfd-relative report a
+  documented `ENOSYS`. Verified: `stat` of a file + a directory.
 
 The static C acceptance suite (`hello`/`stdio`/`malloc`/`file`/`thread`) all run
 on the kernel. Remaining:
-- `fs:` — `stat`/`getdents` struct translation to Dunit `UserFileStat`/`Readdir`.
+- `fs:` — `getdents` (directory iteration) → Dunit `Readdir` struct translation.
 - `signal:`/`network:`/`ldso:` — stubbed to documented `ENOSYS`; `AT_PHDR` auxv
   only needed once a program uses `__thread` TLS variables.
 
