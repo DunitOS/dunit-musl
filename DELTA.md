@@ -30,6 +30,7 @@ UPSTREAM.md
  src/dirent/opendir.c                  |  19 +-
  src/dirent/readdir.c                  |   8 +-
  src/dirent/rewinddir.c                |   8 +-
+ src/fcntl/fcntl.c                     |  69 +--
  src/internal/pthread_impl.h           |  10 +-
  src/internal/syscall.h                |  20 +-
  src/process/posix_spawn.c             | 238 ++---------
@@ -47,10 +48,12 @@ UPSTREAM.md
  src/thread/x86_64/clone.s             |  32 +-
  src/time/clock_gettime.c              | 112 +----
  src/time/clock_nanosleep.c            |  63 ++-
+ src/unistd/access.c                   |  10 +-
  src/unistd/chdir.c                    |   5 +-
  src/unistd/dup.c                      |   6 +-
  src/unistd/dup2.c                     |  17 +-
  src/unistd/dup3.c                     |  26 +-
+ src/unistd/faccessat.c                |  80 ++--
  src/unistd/readv.c                    |  18 +-
  src/unistd/rmdir.c                    |  10 +-
  src/unistd/unlink.c                   |   9 +-
@@ -60,5 +63,5 @@ UPSTREAM.md
 ## Summary
 
 ```
- 42 files changed, 1600 insertions(+), 1059 deletions(-)
+ 45 files changed, 1675 insertions(+), 1149 deletions(-)
 ```
