@@ -35,6 +35,8 @@ UPSTREAM.md
  src/internal/syscall.h                |  20 +-
  src/process/posix_spawn.c             | 238 ++---------
  src/process/waitpid.c                 |  39 +-
+ src/select/poll.c                     |  43 +-
+ src/select/select.c                   |  81 ++--
  src/stat/fstatat.c                    | 178 ++------
  src/stat/mkdir.c                      |  11 +-
  src/stdio/__stdio_read.c              |  21 +-
@@ -63,5 +65,5 @@ UPSTREAM.md
 ## Summary
 
 ```
- 45 files changed, 1676 insertions(+), 1149 deletions(-)
+ 47 files changed, 1749 insertions(+), 1200 deletions(-)
 ```
