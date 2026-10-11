@@ -20,7 +20,10 @@
 #define DUNIT_O_APPEND (1 << 4)
 #define DUNIT_O_EXCL   (1 << 5)
 
-static int dunit_oflags(int f)
+/* Translate POSIX open flags to Dunit OpenFlags bits. Shared with posix_spawn's
+ * OPEN file action, which serializes the same bits for the kernel — hence the
+ * hidden external linkage rather than a file-static helper. */
+hidden int __dunit_oflags(int f)
 {
 	int d = 0;
 	switch (f & O_ACCMODE) {
@@ -41,11 +44,11 @@ static int dunit_oflags(int f)
 hidden long __dunit_open(const char *path, int flags, int mode)
 {
 	(void)mode;
-	return __syscall(SYS_open, path, strlen(path), dunit_oflags(flags));
+	return __syscall(SYS_open, path, strlen(path), __dunit_oflags(flags));
 }
 
 hidden long __dunit_open_cp(const char *path, int flags, int mode)
 {
 	(void)mode;
-	return __syscall_cp(SYS_open, path, strlen(path), dunit_oflags(flags));
+	return __syscall_cp(SYS_open, path, strlen(path), __dunit_oflags(flags));
 }
