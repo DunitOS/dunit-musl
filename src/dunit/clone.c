@@ -10,11 +10,11 @@
  * musl's x86_64 clone.s issues the Linux clone(2) and relies on CLONE_SETTLS to
  * install the child's thread pointer. Dunit instead has ThreadCreate(entry,
  * stack_top, arg) with no TLS argument, so we replace __clone in C: the parent
- * packs {fn,arg,tls} onto the top of the child stack and starts a trampoline
- * that installs the thread pointer FIRST (via the native SetThreadPointer), then
- * runs musl's thread entry. Join/detach are handled by musl in userspace over
- * futexes (see pthread_create.c), so no CLONE_CHILD_CLEARTID emulation is
- * needed. clone.s is neutralized (this definition wins).
+ * packs {fn,arg,tls,ctid} onto the top of the child stack and starts a
+ * trampoline that installs the thread pointer FIRST (via the native
+ * SetThreadPointer), registers the clear-child-tid word (CLONE_CHILD_CLEARTID,
+ * which musl needs to release its thread-list lock across the final exit), then
+ * runs musl's thread entry. clone.s is neutralized (this definition wins).
  */
 
 #define DUNIT_SYS_THREAD_CREATE 29   /* abi/syscalls.abi: ThreadCreate */
