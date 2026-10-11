@@ -8,8 +8,10 @@
 /* Dunit port: posix_spawn maps directly onto the native SpawnArgs syscall — no
  * clone/vfork+exec. argv and envp are packed into one NUL-terminated-string
  * block (argv first, then envp); the kernel loads the ELF with that argv/env
- * and schedules it, returning the child pid. File actions and spawn attributes
- * are not supported yet and are ignored (documented M6-D limitation). */
+ * and schedules it, returning the child pid. File actions (dup2/open/close for
+ * redirection) and spawn attributes are not yet carried by the SpawnArgs
+ * contract: per M6.1 they are REFUSED with a documented ENOSYS, never silently
+ * ignored (silently dropping a caller's redirection would look like success). */
 #define DUNIT_SYS_SPAWN_ARGS 79
 
 extern char **__environ;
@@ -19,8 +21,8 @@ static int dunit_spawn(pid_t *restrict res, const char *path,
 	const posix_spawnattr_t *attr,
 	char *const argv[], char *const envp[])
 {
-	(void)fa;
-	(void)attr;
+	if (fa && fa->__actions) return ENOSYS;
+	if (attr && attr->__flags) return ENOSYS;
 	if (!envp) envp = __environ;
 
 	int argc = 0;
