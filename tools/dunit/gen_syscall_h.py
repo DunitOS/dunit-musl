@@ -59,6 +59,11 @@ DUNIT_MAP = {
     # write_fd]. pipe2(fd, 0) routes through pipe(); pipe2 flags (CLOEXEC/
     # NONBLOCK) need fcntl, which is still ENOSYS (documented limitation).
     "pipe": 83,           # pipe(fd[2]) -> Dunit Pipe
+    # ftruncate(fd, length) sets an open file's size (grow with zeros / shrink)
+    # without moving its offset. Maps 1:1 onto Dunit Truncate(fd, length). plain
+    # truncate(path, length) is still ENOSYS (no path-based kernel call yet);
+    # mkstemp/tcc use the fd form.
+    "ftruncate": 84,      # ftruncate(fd, length) -> Dunit Truncate
     # File management. All path-based Dunit calls take (ptr,len), so the wrappers
     # (unlink/rmdir/mkdir/rename, in src/unistd + src/stat + src/stdio) are
     # reshaped to pass strlen. fsync(fd) matches 1:1.
