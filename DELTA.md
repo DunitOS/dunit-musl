@@ -33,7 +33,7 @@ UPSTREAM.md
  src/fcntl/fcntl.c                     |  67 +--
  src/internal/pthread_impl.h           |  10 +-
  src/internal/syscall.h                |  20 +-
- src/process/posix_spawn.c             | 238 ++---------
+ src/process/posix_spawn.c             | 240 ++---------
  src/process/waitpid.c                 |  39 +-
  src/select/poll.c                     |  43 +-
  src/select/select.c                   |  81 ++--
@@ -44,6 +44,7 @@ UPSTREAM.md
  src/stdio/rename.c                    |  11 +-
  src/thread/__timedwait.c              |  23 +-
  src/thread/__wait.c                   |   6 +-
+ src/thread/pthread_barrier_wait.c     |   3 +-
  src/thread/pthread_cond_timedwait.c   |  14 +-
  src/thread/x86_64/__set_thread_area.s |  17 +-
  src/thread/x86_64/__unmapself.s       |  19 +-
@@ -65,5 +66,5 @@ UPSTREAM.md
 ## Summary
 
 ```
- 47 files changed, 1756 insertions(+), 1200 deletions(-)
+ 48 files changed, 1809 insertions(+), 1202 deletions(-)
 ```
