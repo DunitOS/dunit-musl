@@ -50,6 +50,11 @@ DUNIT_MAP = {
     "mmap": 7,            # mmap(addr,len,prot,flags,-1,0) -> Dunit Mmap (anon only)
     "munmap": 34,         # munmap(addr,len)        -> Dunit Munmap
     "mprotect": 35,       # mprotect(addr,len,prot) -> Dunit Mprotect
+    # Seek. x86_64 lseek(fd, offset, whence) maps 1:1 onto Dunit Seek, which sets
+    # the open handle's offset (whence 0/1/2 = SET/CUR/END) and returns the new
+    # absolute offset. No _llseek on x86_64, so src/unistd/lseek.c calls this
+    # directly; stdio fseek/ftell ride on it.
+    "lseek": 80,          # lseek(fd, offset, whence) -> Dunit Seek
     # File management. All path-based Dunit calls take (ptr,len), so the wrappers
     # (unlink/rmdir/mkdir/rename, in src/unistd + src/stat + src/stdio) are
     # reshaped to pass strlen. fsync(fd) matches 1:1.
