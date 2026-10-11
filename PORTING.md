@@ -113,6 +113,12 @@ checked by serial markers (the M6 acceptance target). The existing freestanding
   boot; `CLOCK_REALTIME` returns the same, documented — no RTC yet) and
   `nanosleep`/`sleep`/`usleep` over the native `Sleep`. Verified: a ~50 ms sleep
   advances the monotonic clock and `time()` is nonzero.
+- `process:` (M6-D) — `posix_spawn`/`posix_spawnp` pack argv+env and call the
+  native `SpawnArgs`; `waitpid`/`wait` poll the native `WaitProcess` and
+  translate `{kind,code}` to a POSIX status (exit code or fault→signal). A C
+  parent launches a C child with args and reaps its exit code. File actions /
+  spawn attributes and `fork` are not supported (documented). Verified with a
+  posix_spawn + waitpid test.
 
 The static C acceptance suite (`hello`/`stdio`/`malloc`/`file`/`thread`) all run
 on the kernel, and the `fs:` surface (open/read/write/close, stat, directory
