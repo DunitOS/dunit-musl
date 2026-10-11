@@ -55,6 +55,10 @@ DUNIT_MAP = {
     # absolute offset. No _llseek on x86_64, so src/unistd/lseek.c calls this
     # directly; stdio fseek/ftell ride on it.
     "lseek": 80,          # lseek(fd, offset, whence) -> Dunit Seek
+    # pipe(fd[2]) matches Dunit Pipe(fd_ptr): the kernel writes [read_fd,
+    # write_fd]. pipe2(fd, 0) routes through pipe(); pipe2 flags (CLOEXEC/
+    # NONBLOCK) need fcntl, which is still ENOSYS (documented limitation).
+    "pipe": 83,           # pipe(fd[2]) -> Dunit Pipe
     # File management. All path-based Dunit calls take (ptr,len), so the wrappers
     # (unlink/rmdir/mkdir/rename, in src/unistd + src/stat + src/stdio) are
     # reshaped to pass strlen. fsync(fd) matches 1:1.
