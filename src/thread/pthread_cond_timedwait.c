@@ -48,9 +48,17 @@ static inline void unlock(volatile int *l)
 static inline void unlock_requeue(volatile int *l, volatile int *r, int w)
 {
 	a_store(l, 0);
-	if (w) __wake(l, 1, 1);
-	else __syscall(SYS_futex, l, FUTEX_REQUEUE|FUTEX_PRIVATE, 0, 1, r) != -ENOSYS
-		|| __syscall(SYS_futex, l, FUTEX_REQUEUE, 0, 1, r);
+	/* Dunit port: there is no FUTEX_REQUEUE syscall, so there is nothing to
+	 * requeue the waiter parked on l onto the mutex r. Wake it instead — it
+	 * returns from its barrier wait and contends for r itself. This drops the
+	 * requeue optimization but is correct, and is exactly what the
+	 * process-shared (w) path already does. Without it, cond_broadcast/signal
+	 * with two or more waiters deadlocked: the raw SYS_futex REQUEUE below was
+	 * an unmapped sentinel (-ENOSYS no-op) that never woke the predecessor, so
+	 * the ordered wake chain broke. */
+	(void)r;
+	(void)w;
+	__wake(l, 1, 1);
 }
 
 enum {
