@@ -7,16 +7,14 @@
 
 /* Dunit port: fcntl subset.
  *
- * F_DUPFD / F_DUPFD_CLOEXEC are real, built on the Dunit Dup syscall via dup():
- * dup() returns the lowest free fd, so to honour the `arg` floor we keep dup'ing
- * and close the fds that landed below it. CLOEXEC has no effect yet — Dunit has
- * no fd-preserving exec (posix_spawn file-actions are unimplemented), so the
- * flag has nothing to act on; the dup itself happens, which is why this is a
- * documented limitation, not a faked success.
+ * F_DUPFD / F_DUPFD_CLOEXEC are built on the Dunit Dup syscall via dup() (see
+ * dunit_dupfd); CLOEXEC is a documented no-op (no fd-preserving exec yet).
  *
- * Everything else (F_GETFL/F_SETFL/F_GETFD/F_SETFD, locks, owner) needs per-fd
- * kernel flag state that does not exist yet, so it returns a documented -ENOSYS
- * (M6.1) until a Dunit Fcntl syscall lands. */
+ * F_GETFD/F_SETFD (FD_CLOEXEC) and F_GETFL/F_SETFL (status flags: access mode,
+ * O_APPEND, O_NONBLOCK) go to the Dunit Fcntl syscall, which keeps per-fd flag
+ * state; O_NONBLOCK is honoured on pipe reads. Locks/owner and other commands
+ * return the kernel's documented -ENOSYS (M6.1), not a fake value. */
+#define DUNIT_SYS_FCNTL 86
 
 static int dunit_dupfd(int fd, int min)
 {
@@ -50,6 +48,6 @@ int fcntl(int fd, int cmd, ...)
 	case F_DUPFD_CLOEXEC:
 		return __syscall_ret(dunit_dupfd(fd, (int)arg));
 	default:
-		return __syscall_ret(-ENOSYS);
+		return __syscall_ret(__syscall(DUNIT_SYS_FCNTL, fd, cmd, arg));
 	}
 }
