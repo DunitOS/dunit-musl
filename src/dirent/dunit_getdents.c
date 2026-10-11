@@ -23,7 +23,7 @@
 #define DUNIT_FT_FILE 1
 #define DUNIT_FT_DIR  2
 #define DUNIT_FT_DEV  3
-#define DUNIT_DIR_CAP 256
+#define DUNIT_DIR_CAP 1024
 
 struct dunit_dirent {
 	char name[64];
@@ -64,6 +64,16 @@ int __dunit_closedir(DIR *dir)
 	free(dd->ents);
 	free(dd);
 	return 0;
+}
+
+/* rewinddir(3): restart iteration. The snapshot cursor lives in dd->pos (there
+ * is no real fd to lseek), so the generic rewinddir — which only resets the
+ * readdir parse buffer and lseeks dir->fd (= -1 here) — would leave dd->pos at
+ * end and make the next readdir return EOF. Reset the snapshot cursor instead. */
+void __dunit_rewinddir(DIR *dir)
+{
+	struct dunit_dir *dd = (struct dunit_dir *)dir;
+	dd->pos = 0;
 }
 
 static unsigned char dt_from_dunit(uint32_t t)

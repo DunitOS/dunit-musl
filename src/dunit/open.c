@@ -18,6 +18,7 @@
 #define DUNIT_O_CREATE (1 << 2)
 #define DUNIT_O_TRUNC  (1 << 3)
 #define DUNIT_O_APPEND (1 << 4)
+#define DUNIT_O_EXCL   (1 << 5)
 
 static int dunit_oflags(int f)
 {
@@ -30,6 +31,7 @@ static int dunit_oflags(int f)
 	if (f & O_CREAT)  d |= DUNIT_O_CREATE;
 	if (f & O_TRUNC)  d |= DUNIT_O_TRUNC;
 	if (f & O_APPEND) d |= DUNIT_O_APPEND;
+	if (f & O_EXCL)   d |= DUNIT_O_EXCL;
 	/* O_CLOEXEC/O_LARGEFILE/O_NONBLOCK/… have no Dunit equivalent yet and are
 	 * intentionally dropped (not faked): the kernel would reject unknown bits. */
 	return d;
