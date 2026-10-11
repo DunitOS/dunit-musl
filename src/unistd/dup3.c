@@ -4,23 +4,19 @@
 #include <fcntl.h>
 #include "syscall.h"
 
+/* Dunit port: dup3(old, new, flags). POSIX requires EINVAL when old == new.
+ * The only defined flag is O_CLOEXEC; Dunit has no exec yet, so close-on-exec
+ * has no observable effect and the flag is accepted but not recorded (documented
+ * — revisit when exec lands). Any other flag is rejected. */
+#define DUNIT_SYS_DUP 82
+
 int __dup3(int old, int new, int flags)
 {
-	int r;
-#ifdef SYS_dup2
-	if (old==new) return __syscall_ret(-EINVAL);
-	if (flags) {
-		while ((r=__syscall(SYS_dup3, old, new, flags))==-EBUSY);
-		if (r!=-ENOSYS) return __syscall_ret(r);
-		if (flags & ~O_CLOEXEC) return __syscall_ret(-EINVAL);
-	}
-	while ((r=__syscall(SYS_dup2, old, new))==-EBUSY);
-	if (r >= 0 && (flags & O_CLOEXEC))
-		__syscall(SYS_fcntl, new, F_SETFD, FD_CLOEXEC);
-#else
-	while ((r=__syscall(SYS_dup3, old, new, flags))==-EBUSY);
-#endif
-	return __syscall_ret(r);
+	if (old == new)
+		return __syscall_ret(-EINVAL);
+	if (flags & ~O_CLOEXEC)
+		return __syscall_ret(-EINVAL);
+	return __syscall_ret(__syscall(DUNIT_SYS_DUP, old, new));
 }
 
 weak_alias(__dup3, dup3);
