@@ -64,6 +64,11 @@ DUNIT_MAP = {
     # truncate(path, length) is still ENOSYS (no path-based kernel call yet);
     # mkstemp/tcc use the fd form.
     "ftruncate": 84,      # ftruncate(fd, length) -> Dunit Truncate
+    # ioctl(fd, request, arg) -> Dunit Ioctl. The kernel handles the tty requests
+    # (TCGETS/TCSETS*/TIOCGWINSZ) by routing to the caller's pty; others ENOTTY.
+    # musl's ioctl.c passes the common requests straight through (its compat_map
+    # only rewrites sound/video/socket-timestamp requests, none of them tty).
+    "ioctl": 88,          # ioctl(fd, req, arg) -> Dunit Ioctl (tty control)
     # File management. All path-based Dunit calls take (ptr,len), so the wrappers
     # (unlink/rmdir/mkdir/rename, in src/unistd + src/stat + src/stdio) are
     # reshaped to pass strlen. fsync(fd) matches 1:1.
