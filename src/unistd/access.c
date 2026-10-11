@@ -1,12 +1,10 @@
 #include <unistd.h>
 #include <fcntl.h>
-#include "syscall.h"
 
+/* Dunit port: route access() through the Dunit faccessat() adapter (Stat-based
+ * existence check) rather than a raw SYS_access/SYS_faccessat, which the kernel
+ * does not implement. */
 int access(const char *filename, int amode)
 {
-#ifdef SYS_access
-	return syscall(SYS_access, filename, amode);
-#else
-	return syscall(SYS_faccessat, AT_FDCWD, filename, amode, 0);
-#endif
+	return faccessat(AT_FDCWD, filename, amode, 0);
 }
