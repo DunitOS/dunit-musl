@@ -29,6 +29,7 @@ UPSTREAM.md
  src/dirent/closedir.c                 |  10 +-
  src/dirent/opendir.c                  |  19 +-
  src/dirent/readdir.c                  |   8 +-
+ src/dirent/rewinddir.c                |   8 +-
  src/internal/pthread_impl.h           |  10 +-
  src/internal/syscall.h                |  20 +-
  src/process/posix_spawn.c             | 238 ++---------
@@ -59,5 +60,5 @@ UPSTREAM.md
 ## Summary
 
 ```
- 41 files changed, 1577 insertions(+), 1058 deletions(-)
+ 42 files changed, 1600 insertions(+), 1059 deletions(-)
 ```
