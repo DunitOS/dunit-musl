@@ -134,3 +134,14 @@ it. Remaining:
   seek yet (files are read sequentially).
 
 Each lands with its own themed commit and a `qemu_test.py` suite entry.
+
+## Pending native I/O correction (Lua/TCC integration)
+
+The working tree bounds read/write requests through a shared internal
+`dunit_io.h`, preserving legal short I/O while stdio/writev drain complete
+buffers. Native read EAGAIN is cooperatively awaited for blocking C input.
+`remove` calls unlink/rmdir adapters instead of Linux-shaped raw calls.
+The kernel ABI is unchanged. Nonblocking descriptor flags are not implemented
+by this correction. Dunit's `musl_io` regression checks large transfers and
+remove; full Lua tests check REPL input and a complete on-device TCC rebuild.
+These edits are uncommitted; update DELTA after committing the fork.

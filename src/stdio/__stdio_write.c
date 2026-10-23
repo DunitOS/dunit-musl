@@ -1,5 +1,5 @@
 #include "stdio_impl.h"
-#include <sys/uio.h>
+#include "dunit_io.h"
 
 /* Dunit port: the kernel has no writev, so drain the FILE's pending buffer and
  * then the new data using the native Write (SYS_write), one buffer at a time.
@@ -15,7 +15,7 @@ size_t __stdio_write(FILE *f, const unsigned char *buf, size_t len)
 		const unsigned char *p = parts[i];
 		size_t left = sizes[i];
 		while (left) {
-			ssize_t cnt = syscall(SYS_write, f->fd, p, left);
+			ssize_t cnt = __syscall_ret(__dunit_write(f->fd, p, left, 0));
 			if (cnt <= 0) {
 				f->wpos = f->wbase = f->wend = 0;
 				f->flags |= F_ERR;
