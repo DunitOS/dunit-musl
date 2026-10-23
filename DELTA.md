@@ -8,17 +8,18 @@ upstream files (M6.1/M6.2).
 ## Added (Dunit-only files)
 
 ```
-DELTA.md
 .github/workflows/dunit-port.yml
+DELTA.md
 PORTING.md
+UPSTREAM.md
 src/dirent/dunit_getdents.c
 src/dunit/clone.c
 src/dunit/futex.c
 src/dunit/open.c
+src/internal/dunit_io.h
 tools/dunit/build-libc.sh
 tools/dunit/gen-delta.sh
 tools/dunit/gen_syscall_h.py
-UPSTREAM.md
 ```
 
 ## Modified upstream files
@@ -35,16 +36,14 @@ UPSTREAM.md
  src/internal/syscall.h                |  20 +-
  src/process/posix_spawn.c             | 240 ++---------
  src/process/waitpid.c                 |  39 +-
- src/select/poll.c                     |  43 +-
- src/select/select.c                   |  81 ++--
  src/stat/fstatat.c                    | 178 ++------
  src/stat/mkdir.c                      |  11 +-
- src/stdio/__stdio_read.c              |  21 +-
- src/stdio/__stdio_write.c             |  53 +--
+ src/stdio/__stdio_read.c              |  23 +-
+ src/stdio/__stdio_write.c             |  55 ++-
+ src/stdio/remove.c                    |  18 +-
  src/stdio/rename.c                    |  11 +-
  src/thread/__timedwait.c              |  23 +-
  src/thread/__wait.c                   |   6 +-
- src/thread/pthread_barrier_wait.c     |   3 +-
  src/thread/pthread_cond_timedwait.c   |  14 +-
  src/thread/x86_64/__set_thread_area.s |  17 +-
  src/thread/x86_64/__unmapself.s       |  19 +-
@@ -56,15 +55,16 @@ UPSTREAM.md
  src/unistd/dup.c                      |   6 +-
  src/unistd/dup2.c                     |  17 +-
  src/unistd/dup3.c                     |  26 +-
- src/unistd/faccessat.c                |  80 ++--
+ src/unistd/read.c                     |   4 +-
  src/unistd/readv.c                    |  18 +-
  src/unistd/rmdir.c                    |  10 +-
  src/unistd/unlink.c                   |   9 +-
- src/unistd/writev.c                   |  19 +-
+ src/unistd/write.c                    |   4 +-
+ src/unistd/writev.c                   |  21 +-
 ```
 
 ## Summary
 
 ```
- 48 files changed, 1809 insertions(+), 1202 deletions(-)
+ 45 files changed, 1625 insertions(+), 1078 deletions(-)
 ```
