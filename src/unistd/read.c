@@ -1,7 +1,7 @@
 #include <unistd.h>
-#include "syscall.h"
+#include "dunit_io.h"
 
 ssize_t read(int fd, void *buf, size_t count)
 {
-	return syscall_cp(SYS_read, fd, buf, count);
+	return __syscall_ret(__dunit_read(fd, buf, count, 1));
 }

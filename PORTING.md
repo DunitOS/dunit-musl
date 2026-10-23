@@ -137,50 +137,13 @@ it. Remaining:
 
 Each lands with its own themed commit and a `qemu_test.py` suite entry.
 
-## M6.5 audit (direct SYS_*, ioctls, paths, cancellation, struct layout)
+## Pending native I/O correction (Lua/TCC integration)
 
-A full read-only audit of the fork against roadmap M6.5. **Core result: the
-M6.1 no-fake-success invariant holds** — every call to an unmapped syscall
-surfaces a documented `-ENOSYS`/`ENOTTY` through `__syscall_ret` (or the
-caller crashes), none is treated as success.
-
-- **Mapped syscalls (23):** read, write, open, close, lseek, mmap, mprotect,
-  munmap, ioctl, pipe, sched_yield, getpid, exit, exit_group, fsync, ftruncate,
-  getcwd, chdir, rename, mkdir, rmdir, unlink, set_tid_address (see
-  `gen_syscall_h.py`/`DUNIT_MAP`). mmap carries fd+offset for file-backed
-  MAP_PRIVATE; `lseek` uses the native `Seek` (no `_llseek`/`mmap2` on x86_64,
-  so no 32-bit split). Everything else is a `0x44440000+` sentinel → `-ENOSYS`.
-- **Direct SYS_\* → ENOSYS (not faked):** process creation (`fork`/`clone`/
-  `vfork`/`execve`), signals (`rt_sigaction`/`rt_sigprocmask`/`tkill`), and the
-  `src/linux`/`ipc`/`mq`/`network` wrappers are all compiled-but-ENOSYS and each
-  returns the error. `abort()` still terminates via the `_Exit` fallthrough.
-- **ioctl:** only `TCGETS`/`TCSETS*`/`TIOCGWINSZ`/`TIOCSWINSZ` are handled by the
-  kernel (tcgetattr/tcsetattr/isatty/winsize work); `TCSBRK`/`TCFLSH`/pty
-  (`TIOCGPTN`/…)/`TIOCSCTTY` and the `SIOC*` network ioctls return
-  `ENOTTY`/`ENOSYS`. `src/misc/ioctl.c`'s compat_map rewrites only
-  sound/video/socket-timestamp requests (no tty) — nothing is silently remapped.
-- **Inherited Linux path literals:** all are upstream-verbatim and fail cleanly
-  (no fake success). Reachable in otherwise-supported surface: `tmpfile`/
-  `tmpnam` use `/tmp` (which exists on Dunit as MemFS, so they work);
-  `__procfdname`→`/proc/self/fd/` makes `realpath`/`ttyname` return ENOENT.
-  Confined to documented-unsupported subsystems: `/etc/passwd` etc. (passwd/NSS),
-  `/etc/resolv.conf` etc. (network), `/bin/sh` (`system`/`popen`), `/dev/ptmx`
-  (pty), `/dev/shm` (shm_open), `/proc/self/exe` (ldso), `/etc/localtime`
-  (tz — benign UTC fallback). None is adapted; none fakes success. (`AT_SECURE`
-  is always 0 in the Dunit auxv, so the `__libc_start_main` secure-mode
-  `/dev/null`/SYS_poll path is unreachable.)
-- **Cancellation (M6-E):** async cancellation is dead — `SIGCANCEL` can never be
-  delivered (`rt_sigaction`/`tkill` ENOSYS), and the native `__timedwait` wraps
-  its wait in `PTHREAD_CANCEL_DISABLE`. The upstream cancellation machinery is
-  left in place but inert; it is incidentally, not explicitly, forbidden.
-- **Kernel struct layout:** `struct stat` and `struct dirent` go through
-  field-by-field adapters over the kernel's own `UserFileStat`/`UserDirEntry`
-  (no public-struct coupling). `struct termios` (60 bytes) is the one musl public
-  struct handed to a syscall as-is — by design, since the kernel tty `Ioctl`
-  implements the Linux termios byte contract. (`stat().st_ino` is 0 while
-  `readdir().d_ino` is synthetic `pos+1` — programs correlating them mismatch.)
-- **Remaining raw `SYS_futex`:** the live `pthread_barrier_wait` owner-wait was
-  converted to the native `__futexwait` (was a busy-spin on the ENOSYS
-  fallthrough). The PI/robust-mutex raw `SYS_futex` calls remain but are dead
-  paths (PI cannot be enabled — `setprotocol` probes futex and gets ENOSYS); they
-  ENOSYS cleanly if ever reached.
+The working tree bounds read/write requests through a shared internal
+`dunit_io.h`, preserving legal short I/O while stdio/writev drain complete
+buffers. Native read EAGAIN is cooperatively awaited for blocking C input.
+`remove` calls unlink/rmdir adapters instead of Linux-shaped raw calls.
+The kernel ABI is unchanged. Nonblocking descriptor flags are not implemented
+by this correction. Dunit's `musl_io` regression checks large transfers and
+remove; full Lua tests check REPL input and a complete on-device TCC rebuild.
+These edits are uncommitted; update DELTA after committing the fork.
