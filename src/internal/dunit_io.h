@@ -2,6 +2,8 @@
 #define DUNIT_IO_H
 #include <errno.h>
 #include <stddef.h>
+#include <fcntl.h>
+#include <poll.h>
 #include "syscall.h"
 
 /* Transfer granularity, not desktop policy or an ABI limit. Page-sized
@@ -14,10 +16,11 @@ static inline long __dunit_read(int fd, void *buf, size_t count, int cancellable
 	for (;;) {
 		long result = cancellable ? __syscall_cp(SYS_read, fd, buf, count)
 			: __syscall(SYS_read, fd, buf, count);
-		/* Native input is asynchronous. Blocking C streams wait for readiness;
-		 * EAGAIN must not become an apparent end-of-file. */
-		if (result != -EAGAIN) return result;
-		__syscall(SYS_sched_yield);
+        if (result != -EAGAIN) return result;
+        long flags = __dunit_fcntl(fd, F_GETFL, 0);
+        if (flags < 0 || (flags & O_NONBLOCK)) return result;
+        struct pollfd input = {fd, POLLIN, 0};
+        if (poll(&input, 1, -1) < 0) return -errno;
 	}
 }
 static inline long __dunit_write(int fd, const void *buf, size_t count, int cancellable)

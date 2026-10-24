@@ -53,19 +53,35 @@ cat > "$sysroot/bin/dunit-cc" <<'WRAP'
 set -e
 SYSROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 CC=${CC:-cc}
-HDRS="-nostdinc -isystem $SYSROOT/include"
-BASE="-fno-pic -fno-stack-protector -fno-asynchronous-unwind-tables"
+# Host include/library environment must never contaminate the target sysroot.
+unset CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH OBJC_INCLUDE_PATH LIBRARY_PATH
+include_arg=
 for a in "$@"; do
-	case "$a" in
-	-c|-S|-E|-print-*|-M|-MM)
-		exec "$CC" $HDRS $BASE "$@" ;;
-	esac
+    candidate=
+    if [ -n "$include_arg" ]; then candidate=$a; include_arg=; fi
+    case "$a" in
+        -I|-isystem|-idirafter|-iquote) include_arg=yes ;;
+        -I*) candidate=${a#-I} ;;
+        -isystem*) candidate=${a#-isystem} ;;
+        -idirafter*) candidate=${a#-idirafter} ;;
+        -iquote*) candidate=${a#-iquote} ;;
+    esac
+    case "$candidate" in
+        /usr/include|/usr/include/*|/usr/local/include|/usr/local/include/*)
+            echo "dunit-cc: host include directory is outside the Dunit sysroot: $candidate" >&2
+            exit 1 ;;
+    esac
 done
+compile_only=
+for a in "$@"; do
+    case "$a" in -c|-S|-E|-print-*|-M|-MM) compile_only=yes ;; esac
+done
+set -- -nostdinc -isystem "$SYSROOT/include" -fno-pic -fno-stack-protector -fno-asynchronous-unwind-tables "$@"
+if [ -n "$compile_only" ]; then exec "$CC" "$@"; fi
 LIBGCC=$("$CC" -print-libgcc-file-name)
-exec "$CC" $HDRS $BASE -static -no-pie -nostdlib -nostartfiles \
-	"$SYSROOT/lib/crt1.o" "$SYSROOT/lib/crti.o" \
-	"$@" \
-	"$SYSROOT/lib/libc.a" "$LIBGCC" "$SYSROOT/lib/crtn.o"
+exec "$CC" --sysroot="$SYSROOT" -L"$SYSROOT/lib" -static -no-pie -nostdlib -nostartfiles \
+    "$SYSROOT/lib/crt1.o" "$SYSROOT/lib/crti.o" \
+    "$@" "$SYSROOT/lib/libc.a" "$LIBGCC" "$SYSROOT/lib/crtn.o"
 WRAP
 chmod +x "$sysroot/bin/dunit-cc"
 

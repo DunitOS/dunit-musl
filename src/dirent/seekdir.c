@@ -3,10 +3,11 @@
 #include "__dirent.h"
 #include "lock.h"
 
+void __dunit_seekdir(DIR *, long);
+
 void seekdir(DIR *dir, long off)
 {
 	LOCK(dir->lock);
-	dir->tell = lseek(dir->fd, off, SEEK_SET);
-	dir->buf_pos = dir->buf_end = 0;
+	__dunit_seekdir(dir, off);
 	UNLOCK(dir->lock);
 }

@@ -27,9 +27,12 @@ hidden long __syscall_ret(unsigned long),
 	__syscall_cp(syscall_arg_t, syscall_arg_t, syscall_arg_t, syscall_arg_t,
 	             syscall_arg_t, syscall_arg_t, syscall_arg_t);
 
+hidden long __dunit_fcntl(int, int, long);
+hidden long __dunit_ioctl(int, int, void *);
+
 #define __syscall1(n,a) __syscall1(n,__scc(a))
-#define __syscall2(n,a,b) __syscall2(n,__scc(a),__scc(b))
-#define __syscall3(n,a,b,c) __syscall3(n,__scc(a),__scc(b),__scc(c))
+#define __syscall2(n,a,b) ((n)==SYS_fcntl ? __dunit_fcntl(__scc(a),__scc(b),0) : __syscall2(n,__scc(a),__scc(b)))
+#define __syscall3(n,a,b,c) ((n)==SYS_fcntl ? __dunit_fcntl(__scc(a),__scc(b),__scc(c)) : (n)==SYS_ioctl ? __dunit_ioctl(__scc(a),__scc(b),(void *)__scc(c)) : __syscall3(n,__scc(a),__scc(b),__scc(c)))
 #define __syscall4(n,a,b,c,d) __syscall4(n,__scc(a),__scc(b),__scc(c),__scc(d))
 #define __syscall5(n,a,b,c,d,e) __syscall5(n,__scc(a),__scc(b),__scc(c),__scc(d),__scc(e))
 #define __syscall6(n,a,b,c,d,e,f) __syscall6(n,__scc(a),__scc(b),__scc(c),__scc(d),__scc(e),__scc(f))

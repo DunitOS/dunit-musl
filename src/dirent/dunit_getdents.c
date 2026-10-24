@@ -47,8 +47,8 @@ DIR *__dunit_opendir(const char *name)
 
 	long n = __syscall(DUNIT_SYS_READDIR, name, strlen(name),
 			   dd->ents, (long)DUNIT_DIR_CAP);
-	if (n < 0) {
-		errno = (int)-n;
+	if (n < 0 || n == DUNIT_DIR_CAP) {
+		errno = n < 0 ? (int)-n : EOVERFLOW;
 		free(dd->ents);
 		free(dd);
 		return 0;
@@ -109,4 +109,14 @@ int __dunit_getdents(DIR *dir, char *buf, int len)
 		dd->pos++;
 	}
 	return used;
+}
+
+/* Snapshot cookies are entry indices, independent of a kernel descriptor. */
+void __dunit_seekdir(DIR *dir, long offset)
+{
+    struct dunit_dir *dd = (struct dunit_dir *)dir;
+    if (offset < 0 || offset > dd->count) { errno = EINVAL; return; }
+    dd->pos = offset;
+    dir->buf_pos = dir->buf_end = 0;
+    dir->tell = offset;
 }

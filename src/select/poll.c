@@ -1,37 +1,32 @@
 #include <poll.h>
 #include <time.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <errno.h>
 #include "syscall.h"
-
-/* Dunit port: the kernel Poll syscall is a NON-blocking readiness snapshot, so
- * the wait is implemented here — re-poll on a short sleep until something is
- * ready or the timeout elapses. timeout < 0 blocks indefinitely, 0 is a single
- * non-blocking check. (A fully event-driven kernel poll can replace this later;
- * the sleep yields the CPU meanwhile.) */
-#define DUNIT_SYS_POLL 87
-#define POLL_SLICE_MS 5
-
 int poll(struct pollfd *fds, nfds_t n, int timeout)
 {
-	long r = __syscall(DUNIT_SYS_POLL, fds, (long)n);
-	if (r != 0 || timeout == 0)
-		return __syscall_ret(r);
-
-	struct timespec start = { 0, 0 }, now;
-	if (timeout > 0)
-		clock_gettime(CLOCK_MONOTONIC, &start);
-
-	for (;;) {
-		struct timespec slice = { 0, POLL_SLICE_MS * 1000000L };
-		nanosleep(&slice, 0);
-		r = __syscall(DUNIT_SYS_POLL, fds, (long)n);
-		if (r != 0)
-			return __syscall_ret(r);
-		if (timeout > 0) {
-			clock_gettime(CLOCK_MONOTONIC, &now);
-			long ms = (now.tv_sec - start.tv_sec) * 1000
-				+ (now.tv_nsec - start.tv_nsec) / 1000000L;
-			if (ms >= timeout)
-				return 0;
-		}
-	}
+    if(n>1024){errno=EINVAL;return -1;}
+    if(n && !fds){errno=EFAULT;return -1;}
+    uint64_t deadline=0;
+    if(timeout<0)deadline=UINT64_MAX;
+    else if(timeout>0){
+        struct timespec ts;
+        if(clock_gettime(CLOCK_MONOTONIC,&ts))return -1;
+        deadline=(uint64_t)ts.tv_sec*1000000000+ts.tv_nsec+(uint64_t)timeout*1000000;
+    }
+    struct native_poll {int32_t fd; uint16_t events,revents;} *records=calloc(n?n:1,sizeof *records);
+    if(!records){errno=ENOMEM;return -1;}
+    for(nfds_t i=0;i<n;i++){
+        if(fds[i].events & ~(POLLIN|POLLOUT|POLLRDNORM|POLLWRNORM)){free(records);errno=EOPNOTSUPP;return -1;}
+        records[i].fd=fds[i].fd;
+        records[i].events=((fds[i].events&(POLLIN|POLLRDNORM))?1:0)|((fds[i].events&(POLLOUT|POLLWRNORM))?2:0);
+    }
+    long r=__syscall(87,records,n,deadline);
+    if(r>=0)for(nfds_t i=0;i<n;i++){
+        unsigned v=records[i].revents;
+        fds[i].revents=((v&1)?(fds[i].events&(POLLIN|POLLRDNORM)):0)|((v&2)?(fds[i].events&(POLLOUT|POLLWRNORM)):0)|((v&4)?POLLHUP:0)|((v&8)?POLLERR:0)|((v&16)?POLLNVAL:0);
+    }
+    free(records);
+    return __syscall_ret(r);
 }

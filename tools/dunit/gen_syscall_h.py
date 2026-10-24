@@ -54,6 +54,7 @@ DUNIT_MAP = {
     # the open handle's offset (whence 0/1/2 = SET/CUR/END) and returns the new
     # absolute offset. No _llseek on x86_64, so src/unistd/lseek.c calls this
     # directly; stdio fseek/ftell ride on it.
+    "pipe": 83,           # native Pipe(int[2]), blocking/EOF
     "lseek": 80,          # lseek(fd, offset, whence) -> Dunit Seek
     # pipe(fd[2]) matches Dunit Pipe(fd_ptr): the kernel writes [read_fd,
     # write_fd]. pipe2(fd, 0) routes through pipe(); pipe2 flags (CLOEXEC/
@@ -107,16 +108,18 @@ def main() -> int:
     root = Path(__file__).resolve().parents[2]
     path = root / "arch" / "x86_64" / "bits" / "syscall.h.in"
     names = []
+    previous = {}
     for line in path.read_text().splitlines():
-        m = re.match(r"\s*#define\s+__NR_(\S+)\s+", line)
+        m = re.match(r"\s*#define\s+__NR_(\S+)\s+(\S+)", line)
         if m:
             names.append(m.group(1))
+            previous[m.group(1)] = int(m.group(2), 0)
     if not names:
         print(f"error: no __NR_ names found in {path}", file=sys.stderr)
         return 1
 
     out = [HEADER]
-    sentinel = SENTINEL_BASE
+    sentinel = max([SENTINEL_BASE - 1] + [v for v in previous.values() if v >= SENTINEL_BASE]) + 1
     width = max(len(n) for n in names) + 1
     n_mapped = 0
     for name in names:
@@ -124,8 +127,10 @@ def main() -> int:
             val = DUNIT_MAP[name]
             n_mapped += 1
         else:
-            val = sentinel
-            sentinel += 1
+            val = previous.get(name, 0)
+            if val < SENTINEL_BASE:
+                val = sentinel
+                sentinel += 1
         out.append(f"#define __NR_{name.ljust(width)}{val}")
     out.append("")
     path.write_text("\n".join(out))
