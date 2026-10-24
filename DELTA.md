@@ -18,6 +18,8 @@ src/dunit/fcntl.c
 src/dunit/futex.c
 src/dunit/open.c
 src/internal/dunit_io.h
+src/process/x86_64/system.c
+src/stdio/x86_64/popen.c
 tools/dunit/build-libc.sh
 tools/dunit/gen-delta.sh
 tools/dunit/gen_syscall_h.py
@@ -80,5 +82,5 @@ tools/dunit/gen_syscall_h.py
 ## Summary
 
 ```
- 62 files changed, 1907 insertions(+), 1463 deletions(-)
+ 64 files changed, 1950 insertions(+), 1463 deletions(-)
 ```
