@@ -77,6 +77,9 @@ upstream tree and return documented errors. This is not a complete POSIX OS.
   pending input and probing. Internal musl ioctl calls use the same adapter;
   Linux requests/termios records do not enter the kernel. Canonical input,
   echo, process groups, baud rates and signal generation are unsupported.
+- system(NULL) reports no available command processor; system(command)/popen
+  explicitly return ENOSYS until shell policy and signal semantics are defined.
+  Architecture backends exclude, but retain, the complete upstream sources.
 - Posix_spawn serializes argv/env and ordered open/close/dup2/chdir actions.
   Bit 63 of bounded block length opts into the extension; old calls ignore
   register six. The kernel prepares a private child fd table and ELF before
