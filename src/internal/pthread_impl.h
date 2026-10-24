@@ -33,6 +33,7 @@ struct pthread {
 
 	/* Part 2 -- implementation details, non-ABI. */
 	int tid;
+	int dunit_tid; /* Native join identity survives self->tid clearing. */
 	int errno_val;
 	volatile int detach_state;
 	volatile int cancel;

@@ -69,6 +69,9 @@ int __clone(int (*fn)(void *), void *stack, int flags, void *arg, ...)
 
 	long tid = __syscall(DUNIT_SYS_THREAD_CREATE,
 			     (long)(uintptr_t)dunit_thread_start, (long)sp, (long)(uintptr_t)d);
-	if (tid >= 0 && ptid) *ptid = (pid_t)tid;
+	if (tid >= 0) {
+		((pthread_t)tls)->dunit_tid = (int)tid;
+		if (ptid) *ptid = (pid_t)tid;
+	}
 	return (int)tid;
 }

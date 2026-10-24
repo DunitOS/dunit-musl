@@ -20,6 +20,10 @@ static int __pthread_timedjoin_np(pthread_t t, void **res, const struct timespec
 	__pthread_setcancelstate(cs, 0);
 	if (r == ETIMEDOUT || r == EINVAL) return r;
 	__tl_sync(t);
+	/* clear-child-tid releases the list lock only after native exit. */
+	int native_status[2];
+	long reaped = __syscall(30, t->dunit_tid, native_status);
+	if (reaped < 0) return (int)-reaped;
 	if (res) *res = t->result;
 	if (t->map_base) __munmap(t->map_base, t->map_size);
 	return 0;

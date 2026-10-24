@@ -91,6 +91,13 @@ upstream tree and return documented errors. This is not a complete POSIX OS.
   buffer invariants. tmpfile uses the path adapter and unlink retains an open
   file object until close. Snapshot directories support seek/rewind cookies;
   overflow is explicit, dirfd remains unsupported.
+- Static TLS uses ELF AT_PHDR/AT_PHENT/AT_PHNUM/AT_ENTRY supplied by Dunit
+  startup. pthread keeps a private native TID after musl clears its public tid;
+  join uses ThreadJoin=30 after clear-child-tid synchronization. Detached exit
+  opts into ThreadExit=31 v1 (arg0 high32=1, low32 signed code), including the
+  stackless __unmapself path. The kernel releases heavy thread resources after
+  HAL escape and retains only joinable status. The OS acceptance test runs
+  1000 joins plus 1000 detached workers with TLS/errno/allocation checks.
 - Barrier waits route through the native futex dispatcher. pthread_cancel and
   asynchronous cancellation return ENOTSUP without side effects; signals,
   interruption/cancellation points and dynamic TLS remain separate contracts.

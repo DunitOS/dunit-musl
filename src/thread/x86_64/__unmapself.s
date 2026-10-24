@@ -11,7 +11,7 @@
 __unmapself:
 	movl $34,%eax   /* Dunit Munmap(base, size) */
 	syscall
-	xor %rdi,%rdi   /* exit code 0 */
+	movabs $0x100000000,%rdi /* v1 auto-reap, exit code 0 */
 	movl $31,%eax   /* Dunit ThreadExit */
 	syscall
 	hlt

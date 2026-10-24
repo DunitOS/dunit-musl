@@ -169,7 +169,7 @@ _Noreturn void __pthread_exit(void *result)
 	a_store(&self->detach_state, DT_EXITED);
 	__wake(&self->detach_state, 1, 1);
 
-	for (;;) __syscall(SYS_exit, 0);
+	for (;;) __syscall(SYS_exit, state==DT_DETACHED ? 1ULL<<32 : 0);
 }
 
 void __do_cleanup_push(struct __ptcb *cb)
