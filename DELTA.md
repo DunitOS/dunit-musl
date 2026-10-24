@@ -37,7 +37,7 @@ tools/dunit/gen_syscall_h.py
  src/dirent/rewinddir.c                |   6 +-
  src/dirent/seekdir.c                  |   5 +-
  src/fcntl/fcntl.c                     |  49 +--
- src/internal/pthread_impl.h           |  10 +-
+ src/internal/pthread_impl.h           |  11 +-
  src/internal/syscall.h                |  27 +-
  src/misc/ioctl.c                      | 158 +------
  src/process/posix_spawn.c             | 264 +++---------
@@ -57,6 +57,8 @@ tools/dunit/gen_syscall_h.py
  src/thread/pthread_barrier_wait.c     |   3 +-
  src/thread/pthread_cancel.c           |  63 +--
  src/thread/pthread_cond_timedwait.c   |  14 +-
+ src/thread/pthread_create.c           |   2 +-
+ src/thread/pthread_join.c             |   4 +
  src/thread/pthread_setcanceltype.c    |   1 +
  src/thread/x86_64/__set_thread_area.s |  17 +-
  src/thread/x86_64/__unmapself.s       |  19 +-
@@ -82,5 +84,5 @@ tools/dunit/gen_syscall_h.py
 ## Summary
 
 ```
- 64 files changed, 1950 insertions(+), 1463 deletions(-)
+ 66 files changed, 1968 insertions(+), 1464 deletions(-)
 ```
