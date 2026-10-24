@@ -1,6 +1,5 @@
 #define _GNU_SOURCE
 #include <fcntl.h>
-#include <unistd.h>
 #include <stdarg.h>
 #include "syscall.h"
 int fcntl(int fd, int cmd, ...) {

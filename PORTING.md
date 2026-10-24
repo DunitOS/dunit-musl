@@ -60,90 +60,59 @@ a static-musl `hello`/`file`/`malloc`/`thread` suite runs on the kernel and is
 checked by serial markers (the M6 acceptance target). The existing freestanding
 `c_hello` (`dunit-os/userspace/ctests/`) is the no-libc baseline this builds on.
 
-## Status
+## Current static profile
 
-**The port has started and runs on the kernel.** Done so far:
+The port provides native startup/argv/env/static TLS, errno, scalar/buffered
+I/O, allocation, files/directories/seek/stat/fsync, clocks/sleep, a pthread
+subset, pipes/dup, and direct spawn/wait. Unsupported calls remain in the full
+upstream tree and return documented errors. This is not a complete POSIX OS.
 
-- `build:` — `x86_64-dunit` target recognised by `configure`; reproducible
-  static-libc build via `tools/dunit/build-libc.sh` (host x86_64 compiler, since
-  the syscall instruction/registers already match). Full `libc.a` + crt objects
-  build cleanly.
-- `syscall:` — `arch/x86_64/bits/syscall.h.in` regenerated from a documented
-  Linux-name → Dunit-number map (`tools/dunit/gen_syscall_h.py`); unmapped calls
-  become `-ENOSYS` sentinels (M6.1). `__set_thread_area.s` installs the thread
-  pointer via the native `SetThreadPointer` (39).
-- First milestone verified end-to-end: a static `musl_hello` (musl `crt1` +
-  `__libc_start_main` + `__init_tls` + `write()`) runs on the Green Tea Kernel
-  via `dunit-os/tools/qemu_test.py` and exits 0.
-- `fs:` (write path) — `writev`/`__stdio_write` loop over the native `Write`, so
-  buffered stdio (`printf`/`fflush`) works. Verified with a static printf test.
-- `vm:` — `mmap`/`munmap`/`mprotect` map 1:1 onto the native Dunit VM syscalls
-  (prot and `MAP_PRIVATE|MAP_ANONYMOUS` flag values already match). Verified with
-  a static malloc/calloc/1 MiB-mmap test.
-- `fs:` (files) — `open` goes through `src/dunit/open.c`: the `__sys_open*` macros
-  pass the path as pointer+length and translate POSIX flags to Dunit `OpenFlags`
-  (the kernel's `Open` is not Linux-shaped). Verified: `open`/`read`/`write`/
-  `close` + a write+read roundtrip in `/persist`.
-- `thread:` — pthreads work. `__clone` (src/dunit/clone.c) starts a thread via the
-  native `ThreadCreate` with a trampoline that installs the thread pointer
-  (`SetThreadPointer`) and registers clear-child-tid (`SetTidAddress`) before
-  running musl's entry. The futex dispatcher (src/dunit/futex.c, wired into
-  `__wake`/`__futexwait`/`__wait`/`__timedwait`) maps Linux `SYS_futex` onto the
-  native `FutexWait`/`FutexWake`; `exit`→`ThreadExit` vs `exit_group`→`Exit`;
-  `__unmapself` uses native numbers. The kernel's new `SetTidAddress` zeroes the
-  clear-child-tid word + futex-wakes it on thread exit, releasing the thread-list
-  lock musl holds across `SYS_exit` (the Linux `CLONE_CHILD_CLEARTID` contract).
-  Verified: `pthread_create` ×2 + a contended `pthread_mutex` + `pthread_join`
-  (counter=10000, both return values correct).
+- Open translates access/create/truncate/append/exclusive/nonblocking/CLOEXEC
+  flags; unsupported semantics fail explicitly. Fcntl=86 translates descriptor
+  flags separately from shared open-description status and duplicates.
+- Poll=87 translates bounded native readiness records and absolute monotonic
+  deadlines; it waits in kernel queues. select delegates to poll with explicit
+  overflow/unsupported-event errors; signal-mask/ppoll support is not claimed.
+- Ioctl=88 uses typed, length-checked Dunit operations for terminal geometry,
+  pending input and probing. Internal musl ioctl calls use the same adapter;
+  Linux requests/termios records do not enter the kernel. Canonical input,
+  echo, process groups, baud rates and signal generation are unsupported.
+- Posix_spawn serializes argv/env and ordered open/close/dup2/chdir actions.
+  Bit 63 of bounded block length opts into the extension; old calls ignore
+  register six. The kernel prepares a private child fd table and ELF before
+  publishing it; inherited native capabilities are not granted. Unsupported
+  attributes/fchdir fail before creating a child. PATH search is userspace,
+  excludes empty/relative components, and has no compiled implicit cwd.
+- Dunit I/O chunks allow POSIX short transfers. Blocking EAGAIN waits for
+  readiness; O_NONBLOCK returns EAGAIN. FILE refill preserves scanf/ungetc
+  buffer invariants. tmpfile uses the path adapter and unlink retains an open
+  file object until close. Snapshot directories support seek/rewind cookies;
+  overflow is explicit, dirfd remains unsupported.
+- Barrier waits route through the native futex dispatcher. pthread_cancel and
+  asynchronous cancellation return ENOTSUP without side effects; signals,
+  interruption/cancellation points and dynamic TLS remain separate contracts.
+- CLOCK_MONOTONIC is elapsed time. CLOCK_REALTIME uses a valid bootloader UTC
+  timestamp plus that timebase; a missing timestamp returns an error.
+- Static private mmap includes eager file snapshots with explicit EOF bounds;
+  shared/COW/demand mappings are not claimed. W+X remains forbidden.
 
-- `fs:` (read path) — `__stdio_read`/`readv` fill the caller's buffer with the
-  native `Read` (no readv in the kernel). Verified: `fopen`/`fputs` then
-  `fopen`/`fgets`×2/`fgetc` EOF roundtrip.
-- `fs:` (stat) — `__fstatat` calls the native `Stat` and maps Dunit's
-  `UserFileStat` (type + size) into `struct stat` (`st_mode` type bits +
-  `st_size`; rest zero). `fstat(fd)` uses the native `Fstat`; only
-  dirfd-relative lookups report a documented `ENOSYS`. Verified: `stat` of a
-  file + a directory.
-- `fs:` (getdents) — `opendir` snapshots a directory via the path-based native
-  `Readdir`; `readdir`/`closedir` serialize/free that snapshot (no fd+offset
-  getdents in the kernel, so `dir->fd` is -1 and `dirfd()` is not a real fd).
-  Verified: `opendir`/`readdir`/`closedir` list `/app` (64 entries) and find a
-  known name.
+The Dunit OS repository supplies the QEMU marker contracts and pinned upstream
+libc-test subset. Its acceptance record is the source of execution evidence;
+code presence and building libc are not runtime proof. Signal/interruption,
+secure entropy, dynamic linking, fd-backed directory iteration, POSIX ownership
+and network objects are outside this declared static subset. F_OK is a real
+Stat-based existence check; R/W/X permission queries explicitly fail until the
+native permission model can answer them.
 
-- `time:` — `clock_gettime` over the native `ClockGetTime` (monotonic since
-  boot; `CLOCK_REALTIME` returns the same, documented — no RTC yet) and
-  `nanosleep`/`sleep`/`usleep` over the native `Sleep`. Verified: a ~50 ms sleep
-  advances the monotonic clock and `time()` is nonzero.
-- `process:` (M6-D) — `posix_spawn`/`posix_spawnp` pack argv+env and call the
-  native `SpawnArgs`; `waitpid`/`wait` poll the native `WaitProcess` and
-  translate `{kind,code}` to a POSIX status (exit code or fault→signal). A C
-  parent launches a C child with args and reaps its exit code. File actions /
-  spawn attributes are **refused with `ENOSYS`** (M6.1 — not silently ignored,
-  which would drop a caller's redirection and look like success); `fork` is
-  `ENOSYS`. Verified with a posix_spawn + waitpid test (incl. file-actions
-  refusal).
+## Sysroot isolation and reproducibility
 
-The static C acceptance suite (`hello`/`stdio`/`malloc`/`file`/`thread`) all run
-on the kernel, and the `fs:` surface (open/read/write/close, stat, directory
-iteration, buffered stdio, getcwd/chdir, mkdir/rmdir/unlink/rename/fsync) is
-complete. `build-libc.sh` also installs a
-`<sysroot>/bin/dunit-cc` wrapper that compiles+links a static `x86_64-dunit`
-program in one command (plus prefixed `x86_64-dunit-cc`/`-ar`/`-strip` and a
-`share/dunit-sdk/manifest` recording the ABI/libc versions, profile and license
-— the M6.4 cross-"toolchain"); the dunit-os Makefile builds its C tests through
-it. Remaining:
-- `signal:`/`network:`/`ldso:` — stubbed to documented `ENOSYS`; `AT_PHDR` auxv
-  only needed once a program uses `__thread` TLS variables.
+`tools/dunit/build-libc.sh` installs crt/libc/headers and relocatable compiler
+wrappers. Headers use -nostdinc; explicit host include roots are refused;
+ambient include/library environment is cleared. Linking uses --sysroot and the
+selected target lib directory before user -l options (including musl's empty
+libm archive), so a host libm cannot be linked accidentally. Compiler support
+libgcc is an explicit input. The OS build fingerprints actual source/compiler
+inputs, regenerates SDK CMake/Meson/Autoconf cross files and provenance hashes,
+and rejects ELF files outside its static profile before packing the initrd.
 
-Each lands with its own themed commit and a `qemu_test.py` suite entry.
-
-## Pending native I/O correction (Lua/TCC integration)
-
-The working tree bounds read/write requests through a shared internal
-`dunit_io.h`, preserving legal short I/O while stdio/writev drain complete
-buffers. Native read EAGAIN is cooperatively awaited for blocking C input.
-`remove` calls unlink/rmdir adapters instead of Linux-shaped raw calls.
-The kernel ABI is unchanged. Nonblocking descriptor flags are not implemented
-by this correction. Dunit's `musl_io` regression checks large transfers and
-remove; full Lua tests check REPL input and a complete on-device TCC rebuild.
-These edits are uncommitted; update DELTA after committing the fork.
+DELTA.md is regenerated from committed history with tools/dunit/gen-delta.sh.

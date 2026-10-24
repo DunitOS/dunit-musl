@@ -26,7 +26,13 @@ static inline long __dunit_read(int fd, void *buf, size_t count, int cancellable
 static inline long __dunit_write(int fd, const void *buf, size_t count, int cancellable)
 {
 	if (count > DUNIT_IO_CHUNK) count = DUNIT_IO_CHUNK;
-	return cancellable ? __syscall_cp(SYS_write, fd, buf, count)
-		: __syscall(SYS_write, fd, buf, count);
+    for (;;) {
+        long result = cancellable ? __syscall_cp(SYS_write, fd, buf, count) : __syscall(SYS_write, fd, buf, count);
+        if (result != -EAGAIN) return result;
+        long flags = __dunit_fcntl(fd, F_GETFL, 0);
+        if (flags < 0 || (flags & O_NONBLOCK)) return result;
+        struct pollfd output = {fd, POLLOUT, 0};
+        if (poll(&output, 1, -1) < 0) return -errno;
+    }
 }
 #endif

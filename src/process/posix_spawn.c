@@ -3,7 +3,6 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include "syscall.h"
 #include "fdop.h"
 #include <stdint.h>
@@ -15,25 +14,8 @@ extern hidden int __dunit_oflags(int);
  * and schedules it, returning the child pid. Unsupported actions/attributes
  * fail before creating a child; never mutate the parent's descriptor table. */
 #define DUNIT_SYS_SPAWN_ARGS 79
-#define FA_HDR 24   /* 6 × u32 header before each action's path bytes */
-
-hidden int __dunit_oflags(int);
 
 extern char **__environ;
-
-static size_t fa_path_len(const struct fdop *op)
-{
-	if (op->cmd == FDOP_OPEN || op->cmd == FDOP_CHDIR)
-		return strlen(op->path);
-	return 0;
-}
-
-static void put32(unsigned char *p, uint32_t v)
-{
-	p[0] = v; p[1] = v >> 8; p[2] = v >> 16; p[3] = v >> 24;
-}
-
-// PLACEHOLDER
 
 static int dunit_spawn(pid_t *restrict res, const char *path,
 	const posix_spawn_file_actions_t *fa,
@@ -101,4 +83,3 @@ int posix_spawn(pid_t *restrict res, const char *restrict path,
 {
 	return dunit_spawn(res, path, fa, attr, argv, envp);
 }
-

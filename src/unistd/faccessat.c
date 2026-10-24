@@ -25,8 +25,10 @@ struct dunit_stat {
 
 int faccessat(int fd, const char *path, int amode, int flag)
 {
-	(void)amode;
-	(void)flag;
+	if (amode & ~(R_OK|W_OK|X_OK)) return __syscall_ret(-EINVAL);
+	if (flag & ~AT_EACCESS) return __syscall_ret(-EINVAL);
+	/* No POSIX ownership/permission query exists. Never claim R/W/X authority. */
+	if (amode != F_OK || flag) return __syscall_ret(-EOPNOTSUPP);
 	if (fd != AT_FDCWD && path && path[0] != '/')
 		return __syscall_ret(-ENOSYS);
 	struct dunit_stat ds = { 0, 0 };

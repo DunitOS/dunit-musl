@@ -46,30 +46,17 @@ DUNIT_MAP = {
     # Anonymous memory for malloc. Dunit's prot bits (R=1/W=2/X=4) and the
     # MAP_PRIVATE(0x2)|MAP_ANONYMOUS(0x20) flag values match Linux exactly, and
     # the kernel reads only (addr,len,prot,flags) — fd/offset are ignored, so
-    # file-backed mmap (no MAP_ANONYMOUS) is rejected EINVAL rather than faked.
-    "mmap": 7,            # mmap(addr,len,prot,flags,-1,0) -> Dunit Mmap (anon only)
+    # file-backed private mappings use the native fd/offset slots.
+    "mmap": 7,            # mmap(addr,len,prot,flags,-1,0) -> Dunit Mmap (private)
     "munmap": 34,         # munmap(addr,len)        -> Dunit Munmap
     "mprotect": 35,       # mprotect(addr,len,prot) -> Dunit Mprotect
     # Seek. x86_64 lseek(fd, offset, whence) maps 1:1 onto Dunit Seek, which sets
     # the open handle's offset (whence 0/1/2 = SET/CUR/END) and returns the new
     # absolute offset. No _llseek on x86_64, so src/unistd/lseek.c calls this
     # directly; stdio fseek/ftell ride on it.
+    "ftruncate": 84,      # native Truncate(fd, length)
     "pipe": 83,           # native Pipe(int[2]), blocking/EOF
     "lseek": 80,          # lseek(fd, offset, whence) -> Dunit Seek
-    # pipe(fd[2]) matches Dunit Pipe(fd_ptr): the kernel writes [read_fd,
-    # write_fd]. pipe2(fd, 0) routes through pipe(); pipe2 flags (CLOEXEC/
-    # NONBLOCK) need fcntl, which is still ENOSYS (documented limitation).
-    "pipe": 83,           # pipe(fd[2]) -> Dunit Pipe
-    # ftruncate(fd, length) sets an open file's size (grow with zeros / shrink)
-    # without moving its offset. Maps 1:1 onto Dunit Truncate(fd, length). plain
-    # truncate(path, length) is still ENOSYS (no path-based kernel call yet);
-    # mkstemp/tcc use the fd form.
-    "ftruncate": 84,      # ftruncate(fd, length) -> Dunit Truncate
-    # ioctl(fd, request, arg) -> Dunit Ioctl. The kernel handles the tty requests
-    # (TCGETS/TCSETS*/TIOCGWINSZ) by routing to the caller's pty; others ENOTTY.
-    # musl's ioctl.c passes the common requests straight through (its compat_map
-    # only rewrites sound/video/socket-timestamp requests, none of them tty).
-    "ioctl": 88,          # ioctl(fd, req, arg) -> Dunit Ioctl (tty control)
     # File management. All path-based Dunit calls take (ptr,len), so the wrappers
     # (unlink/rmdir/mkdir/rename, in src/unistd + src/stat + src/stdio) are
     # reshaped to pass strlen. fsync(fd) matches 1:1.

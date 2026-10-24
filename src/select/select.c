@@ -1,6 +1,7 @@
 #include <sys/select.h>
 #include <poll.h>
 #include <errno.h>
+#include <limits.h>
 
 /* Dunit port: select implemented on top of poll (which the kernel Poll syscall
  * backs). Build a pollfd set from the fd_sets, poll, then rebuild the sets from
@@ -28,11 +29,14 @@ int select(int n, fd_set *restrict rfds, fd_set *restrict wfds,
 		}
 	}
 
-	int timeout = tv ? (int)(tv->tv_sec * 1000 + tv->tv_usec / 1000) : -1;
+    if (tv && (tv->tv_sec < 0 || tv->tv_usec < 0 || tv->tv_usec >= 1000000)) { errno=EINVAL; return -1; }
+    if (tv && tv->tv_sec > (INT_MAX-1000)/1000) { errno=EOVERFLOW; return -1; }
+    int timeout = tv ? (int)(tv->tv_sec*1000 + (tv->tv_usec+999)/1000) : -1;
 	int r = poll(pfd, cnt, timeout);
 	if (r < 0)
 		return -1; /* poll set errno */
 
+    for (int i=0;i<cnt;i++) if(pfd[i].revents&POLLNVAL){errno=EBADF;return -1;}
 	if (rfds) FD_ZERO(rfds);
 	if (wfds) FD_ZERO(wfds);
 	if (efds) FD_ZERO(efds);
