@@ -14,6 +14,7 @@ PORTING.md
 UPSTREAM.md
 src/dirent/dunit_getdents.c
 src/dunit/clone.c
+src/dunit/fcntl.c
 src/dunit/futex.c
 src/dunit/open.c
 src/internal/dunit_io.h
@@ -25,26 +26,36 @@ tools/dunit/gen_syscall_h.py
 ## Modified upstream files
 
 ```
+ README                                |   2 +-
  arch/x86_64/bits/syscall.h.in         | 777 +++++++++++++++++-----------------
  configure                             |  11 +
  src/dirent/closedir.c                 |  10 +-
  src/dirent/opendir.c                  |  19 +-
  src/dirent/readdir.c                  |   8 +-
- src/dirent/rewinddir.c                |   8 +-
- src/fcntl/fcntl.c                     |  67 +--
+ src/dirent/rewinddir.c                |   6 +-
+ src/dirent/seekdir.c                  |   5 +-
+ src/fcntl/fcntl.c                     |  49 +--
  src/internal/pthread_impl.h           |  10 +-
- src/internal/syscall.h                |  20 +-
- src/process/posix_spawn.c             | 240 ++---------
+ src/internal/syscall.h                |  27 +-
+ src/misc/ioctl.c                      | 158 +------
+ src/process/posix_spawn.c             | 264 +++---------
+ src/process/posix_spawnp.c            |  30 +-
  src/process/waitpid.c                 |  39 +-
+ src/select/poll.c                     |  40 +-
+ src/select/select.c                   |  85 ++--
  src/stat/fstatat.c                    | 178 ++------
  src/stat/mkdir.c                      |  11 +-
- src/stdio/__stdio_read.c              |  23 +-
+ src/stdio/__stdio_read.c              |  37 +-
  src/stdio/__stdio_write.c             |  55 ++-
  src/stdio/remove.c                    |  18 +-
  src/stdio/rename.c                    |  11 +-
+ src/stdio/tmpfile.c                   |   7 +-
  src/thread/__timedwait.c              |  23 +-
  src/thread/__wait.c                   |   6 +-
+ src/thread/pthread_barrier_wait.c     |   3 +-
+ src/thread/pthread_cancel.c           |  63 +--
  src/thread/pthread_cond_timedwait.c   |  14 +-
+ src/thread/pthread_setcanceltype.c    |   1 +
  src/thread/x86_64/__set_thread_area.s |  17 +-
  src/thread/x86_64/__unmapself.s       |  19 +-
  src/thread/x86_64/clone.s             |  32 +-
@@ -55,6 +66,9 @@ tools/dunit/gen_syscall_h.py
  src/unistd/dup.c                      |   6 +-
  src/unistd/dup2.c                     |  17 +-
  src/unistd/dup3.c                     |  26 +-
+ src/unistd/faccessat.c                |  82 ++--
+ src/unistd/isatty.c                   |   2 +-
+ src/unistd/pipe2.c                    |  17 +-
  src/unistd/read.c                     |   4 +-
  src/unistd/readv.c                    |  18 +-
  src/unistd/rmdir.c                    |  10 +-
@@ -66,5 +80,5 @@ tools/dunit/gen_syscall_h.py
 ## Summary
 
 ```
- 45 files changed, 1625 insertions(+), 1078 deletions(-)
+ 62 files changed, 1907 insertions(+), 1463 deletions(-)
 ```
